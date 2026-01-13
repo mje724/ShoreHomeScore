@@ -20,61 +20,162 @@ const CAFE_ELEVATION = 4; // +4ft above BFE
 const COST_PER_SQFT = 250; // NJ Shore average
 const LAND_VALUE_PERCENT = 0.35; // Land typically 35% of total value
 
+// =============================================================================
+// GLOSSARY - Plain English definitions for technical terms
+// =============================================================================
+const GLOSSARY = {
+  bfe: {
+    term: 'BFE (Base Flood Elevation)',
+    definition: 'The height that FEMA predicts floodwater will reach during a major flood (the "100-year flood" that has a 1% chance of happening each year). Measured in feet above a fixed reference point called NAVD88. If your BFE is 9ft, FEMA expects flood water could reach 9 feet during a major flood event.',
+    example: 'If your home\'s first floor is at 11ft and your BFE is 9ft, you have 2ft of "freeboard" (safety buffer) above the expected flood level.',
+    whyItMatters: 'Your elevation relative to BFE determines your flood insurance rates and whether you meet building code requirements.'
+  },
+  navd88: {
+    term: 'NAVD88',
+    definition: 'North American Vertical Datum of 1988 - a fixed reference point for measuring elevation across the US. It\'s roughly based on average sea level but adjusted for local geography. All flood elevations in your area use this same reference point.',
+    example: 'When your Elevation Certificate says "9.5ft NAVD88", that\'s your height above this fixed reference - not above the current water level.',
+    whyItMatters: 'Using a consistent reference allows accurate comparison between your home, flood levels, and building requirements.'
+  },
+  cafe: {
+    term: 'CAFE (Climate-Adjusted Flood Elevation)',
+    definition: 'New Jersey\'s 2026 requirement that adds 4 extra feet to the BFE for new construction and major renovations. This accounts for rising sea levels and more intense storms predicted due to climate change.',
+    example: 'If your BFE is 9ft, the CAFE standard requires your lowest floor to be at 13ft (9 + 4 = 13).',
+    whyItMatters: 'Homes built to CAFE standard will have lower flood risk and insurance costs for decades to come.'
+  },
+  substantialImprovement: {
+    term: 'Substantial Improvement (SI)',
+    definition: 'When the cost of your renovation equals or exceeds 50% of your home\'s structure value (not including land). Hitting this threshold triggers mandatory elevation requirements - your entire home must be raised to meet current flood codes.',
+    example: 'If your structure is worth $400,000, any renovation totaling $200,000 or more (over 10 years) triggers SI.',
+    whyItMatters: 'This is the most important threshold for shore homeowners. Accidentally triggering SI can add $150,000-$400,000 in unexpected elevation costs.'
+  },
+  structureValue: {
+    term: 'Structure Value',
+    definition: 'The value of your home\'s building only - NOT including the land it sits on. This is what\'s used to calculate the 50% Substantial Improvement threshold. Typically 60-70% of your total property value.',
+    example: 'A home worth $600,000 total might have land worth $200,000 and structure worth $400,000. Your 50% threshold would be $200,000.',
+    whyItMatters: 'Using the wrong value (total vs structure) could cause you to miscalculate your renovation budget.'
+  },
+  floodZone: {
+    term: 'Flood Zone',
+    definition: 'FEMA\'s classification of flood risk for your area. Common zones: AE (high risk, along rivers/bays), VE (highest risk, coastal with waves), X (lower risk, outside 100-year flood area).',
+    example: 'VE zones face both flooding AND wave action, requiring stronger foundations and stricter building codes than AE zones.',
+    whyItMatters: 'Your flood zone determines your insurance requirements, building codes, and flood risk level.'
+  },
+  elevationCertificate: {
+    term: 'Elevation Certificate (EC)',
+    definition: 'An official document prepared by a surveyor that records your home\'s elevation compared to the BFE. It includes your lowest floor height, machinery locations, and flood vent information.',
+    example: 'The EC might show your lowest floor at 8.5ft with a BFE of 9ft, meaning you\'re 0.5ft below the expected flood level.',
+    whyItMatters: 'Required for accurate flood insurance pricing. An EC showing you\'re above BFE can save thousands per year in premiums.'
+  },
+  floodVent: {
+    term: 'Flood Vent (Engineered Opening)',
+    definition: 'Special openings in foundation walls that allow floodwater to flow through rather than pushing against your home. ICC-certified "engineered" vents automatically open when water rises and close when it recedes.',
+    example: 'A 400 sq ft garage needs at least 2 engineered flood vents (each typically rated for 200 sq ft).',
+    whyItMatters: 'Proper venting reduces structural damage during floods and can improve your NFIP insurance rating.'
+  },
+  acv: {
+    term: 'ACV (Actual Cash Value)',
+    definition: 'Insurance payout method that deducts depreciation from your claim. Older roofs get reduced payouts because they\'ve "used up" some of their lifespan. The opposite is RCV (Replacement Cost Value) which pays full replacement cost.',
+    example: 'A 15-year-old roof damaged in a storm might only get 50% of replacement cost under ACV, while a 5-year-old roof gets nearly full value.',
+    whyItMatters: 'Roof age directly affects how much insurance will pay if you have damage. Older roofs = lower payouts.'
+  },
+  fortified: {
+    term: 'FORTIFIED',
+    definition: 'A voluntary certification program by IBHS (Insurance Institute for Business & Home Safety) that verifies your home meets enhanced wind and storm resistance standards. Three levels: Bronze, Silver, and Gold.',
+    example: 'FORTIFIED Silver requires sealed roof deck, proper fasteners, and protected openings - many insurers offer 15-25% discounts.',
+    whyItMatters: 'FORTIFIED certification can significantly reduce wind/hurricane insurance premiums and improves resale value.'
+  },
+  iecc: {
+    term: 'IECC (International Energy Conservation Code)',
+    definition: 'National building code for energy efficiency. New Jersey adopted the 2024 version which requires high insulation (R-60 attic), efficient windows (U-factor ≤0.30), and air sealing verification.',
+    example: 'If you replace windows during a renovation, the new ones must meet 2024 IECC standards with U-factor of 0.30 or lower.',
+    whyItMatters: 'Any permitted renovation must meet current energy codes, which affects material choices and costs.'
+  },
+  irz: {
+    term: 'IRZ (Inundation Risk Zone)',
+    definition: 'Areas projected to experience daily tidal flooding by the year 2100 due to sea level rise (based on 4.4ft rise projections). Properties in IRZ have additional disclosure requirements.',
+    example: 'A home 3 feet above current high tide might be in an IRZ because sea levels are expected to rise significantly.',
+    whyItMatters: 'IRZ properties require deed notices for any substantial work, affecting future buyers\' awareness and property values.'
+  },
+  breakawayWalls: {
+    term: 'Breakaway Walls',
+    definition: 'Walls below the BFE designed to collapse under flood pressure without damaging the main structure. Required in V-zones for any enclosed area below flood level.',
+    example: 'A ground-level garage in a VE zone must have walls that will break away during a flood rather than transfer damaging forces to the elevated home above.',
+    whyItMatters: 'Proper breakaway walls protect your home\'s structural integrity during floods and are required for code compliance.'
+  },
+  sealedRoofDeck: {
+    term: 'Sealed Roof Deck',
+    definition: 'A secondary water barrier applied directly to your roof decking (plywood) under the shingles. If shingles blow off in high winds, this membrane prevents water from entering your home.',
+    example: 'Peel-and-stick underlayment or spray-applied SWR (Secondary Water Resistance) are common methods.',
+    whyItMatters: 'Major source of hurricane damage is water intrusion after shingles blow off. Sealed deck prevents this and qualifies for insurance discounts.'
+  },
+  nfip: {
+    term: 'NFIP (National Flood Insurance Program)',
+    definition: 'The federal flood insurance program run by FEMA. Most private insurers don\'t cover floods, so NFIP is the primary source of flood coverage. Rates are based on your elevation relative to BFE.',
+    example: 'A home 2ft below BFE might pay $3,000+/year while a home 2ft above BFE might pay under $1,000/year.',
+    whyItMatters: 'Understanding NFIP rating factors helps you make mitigation decisions that reduce premiums.'
+  }
+};
+
 // Threshold explanations
 const COMPLIANCE_INFO = {
   fortyPercent: {
     title: '40% Yellow Zone',
-    description: 'When cumulative improvements reach 40% of structure value, most NJ municipalities require a "Substantial Improvement" review. This typically means:',
+    definition: 'When your renovation costs reach 40% of your structure value (building only, not land), most towns require extra scrutiny.',
+    description: 'This is an early warning threshold. You haven\'t triggered mandatory elevation yet, but the town will look more closely at your permits.',
     consequences: [
-      'Signed Contractor Affidavits required for all work',
-      'Detailed engineering review of proposed improvements',
-      'Higher scrutiny on permit applications',
-      'Warning that you are approaching mandatory elevation threshold'
+      'Contractor must sign affidavits confirming project costs',
+      'Building department does detailed review of all work',
+      'You\'re getting close to the 50% cliff - plan carefully',
+      'Consider phasing work across multiple years if possible'
     ],
     citation: 'N.J.A.C. 7:13 - NJ Flood Hazard Area Control Act'
   },
   fiftyPercent: {
     title: '50% Red Zone - Substantial Improvement',
-    description: 'At 50%, your project legally triggers "Substantial Improvement" (SI) under FEMA and NJ REAL rules. This means:',
+    definition: 'When renovation costs hit 50% of structure value, federal law requires your entire home to be elevated to current flood standards.',
+    description: 'This is the critical threshold. Once crossed, you cannot continue your renovation until the whole house is raised to BFE +4ft - often adding $150,000-$400,000 to your project.',
     consequences: [
-      'MANDATORY elevation of entire structure to BFE + 4ft',
-      'All mechanical systems must be elevated or protected',
-      'Foundation must meet current V-zone or A-zone standards',
-      'Cannot proceed with renovation until elevation complete',
-      'Typical elevation cost: $150,000 - $400,000+'
+      'ALL work stops until home is elevated to BFE + 4ft',
+      'Elevation typically costs $150,000 - $400,000+',
+      'All mechanicals (HVAC, electrical, plumbing) must be elevated too',
+      'Timeline extends by 6-12 months minimum',
+      'Cannot get Certificate of Occupancy without compliance'
     ],
     citation: 'FEMA 44 CFR 59.1 & N.J.A.C. 7:13-12.5'
   },
   cafeStandard: {
     title: 'CAFE +4ft Standard (2026)',
-    description: 'The Climate-Adjusted Flood Elevation requires new construction and substantially improved structures in tidal areas to be elevated 4 feet above the current FEMA BFE.',
+    definition: 'New Jersey\'s climate-adjusted requirement that adds 4 feet of extra height above FEMA\'s flood level for new construction and substantial improvements.',
+    description: 'This accounts for sea level rise and stronger storms. If your BFE is 9ft, you\'d need to build to 13ft under CAFE.',
     consequences: [
-      'Higher first-floor elevation than previous standards',
-      'Increased construction costs but better long-term protection',
-      'May qualify for significant flood insurance discounts',
-      'Future-proofs against projected sea level rise'
+      'First floor must be at BFE + 4ft (not just BFE)',
+      'Higher construction costs upfront, but better protection',
+      'Significant flood insurance savings over time',
+      'Your home will meet standards for decades to come'
     ],
     citation: 'NJ REAL Rules - Effective January 2026'
   },
   ventingRatio: {
-    title: '1:1 Flood Venting Requirement',
-    description: 'FEMA and NJ building codes require engineered flood openings in any enclosed area below BFE to allow floodwater to flow through.',
+    term: '1:1 Flood Venting Rule',
+    definition: 'For every square foot of enclosed space below flood level (garage, crawlspace), you need 1 square inch of flood vent opening.',
+    description: 'Flood vents let water flow through your foundation instead of building up pressure that can destroy walls.',
     consequences: [
-      'Required: 1 square inch of opening per 1 square foot of enclosed area',
-      'Non-engineered openings require 2x the area',
-      'Insufficient venting = insurance penalties and code violations',
-      'Proper venting can improve NFIP rating by 1+ classes'
+      'A 400 sq ft garage needs 400 sq inches of venting (typically 2 engineered vents)',
+      'Non-engineered openings (holes in walls) need TWICE the area',
+      'Insufficient venting = code violation + insurance penalties',
+      'Proper venting can improve your flood insurance rating'
     ],
     citation: 'FEMA TB 1-08 & NJ Uniform Construction Code'
   },
   legacyWindow: {
     title: 'July 2026 Legacy Window',
-    description: 'Applications deemed "complete" by NJDEP within 180 days of NJ REAL rule adoption can be reviewed under OLD elevation standards.',
+    definition: 'A 6-month grace period where permit applications can be reviewed under OLD rules (BFE instead of BFE+4) if submitted before the deadline.',
+    description: 'If you\'re planning major work, submitting a complete application before July 2026 could save significant elevation costs.',
     consequences: [
-      'Grandfathered projects may only need BFE (not BFE+4)',
-      'Significant cost savings potential',
-      'Deadline is firm - incomplete applications don\'t qualify',
-      'Requires all supporting documents submitted'
+      'Applications must be COMPLETE (not just started)',
+      'Could save $50,000-$150,000 in extra elevation costs',
+      'Deadline is firm - no extensions',
+      'Must include all engineering, surveys, and supporting docs'
     ],
     citation: 'NJ REAL Rules - Grandfathering Provision'
   }
@@ -636,6 +737,97 @@ const CHECKLIST_CATEGORIES = [
 // HELPER COMPONENTS
 // =============================================================================
 
+// Inline glossary term with tooltip
+const GlossaryTerm = ({ term, children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const glossaryItem = GLOSSARY[term];
+  
+  if (!glossaryItem) return <span>{children}</span>;
+  
+  return (
+    <span className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-cyan-400 underline decoration-dotted underline-offset-2 cursor-help hover:text-cyan-300"
+      >
+        {children}
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 w-80 bg-slate-800 border border-cyan-500/50 rounded-xl p-4 shadow-xl"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <h4 className="font-bold text-cyan-400">{glossaryItem.term}</h4>
+                <button onClick={() => setIsOpen(false)} className="text-slate-500 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-sm text-slate-300 mb-3">{glossaryItem.definition}</p>
+              {glossaryItem.example && (
+                <div className="bg-slate-900/50 rounded-lg p-2 mb-2">
+                  <p className="text-xs text-slate-400">
+                    <span className="text-amber-400 font-bold">Example:</span> {glossaryItem.example}
+                  </p>
+                </div>
+              )}
+              <p className="text-xs text-emerald-400 border-t border-slate-700 pt-2">
+                💡 <strong>Why it matters:</strong> {glossaryItem.whyItMatters}
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
+
+// Full glossary modal
+const GlossaryModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-slate-800 border-2 border-slate-600 rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto my-8"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-white">📚 Glossary of Terms</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          {Object.entries(GLOSSARY).map(([key, item]) => (
+            <div key={key} className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+              <h4 className="font-bold text-cyan-400 mb-2">{item.term}</h4>
+              <p className="text-sm text-slate-300 mb-2">{item.definition}</p>
+              {item.example && (
+                <p className="text-xs text-slate-400 mb-2">
+                  <span className="text-amber-400 font-bold">Example:</span> {item.example}
+                </p>
+              )}
+              <p className="text-xs text-emerald-400">
+                💡 {item.whyItMatters}
+              </p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const InfoTooltip = ({ info }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -658,7 +850,15 @@ const InfoTooltip = ({ info }) => {
               exit={{ opacity: 0, y: 10 }}
               className="absolute z-50 left-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-xl"
             >
-              <h4 className="font-bold text-white mb-2">{info.title}</h4>
+              <div className="flex items-start justify-between mb-2">
+                <h4 className="font-bold text-white">{info.title}</h4>
+                <button onClick={() => setIsOpen(false)} className="text-slate-500 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {info.definition && (
+                <p className="text-sm text-cyan-300 mb-2 italic">{info.definition}</p>
+              )}
               <p className="text-sm text-slate-300 mb-3">{info.description}</p>
               <ul className="space-y-1 mb-3">
                 {info.consequences.map((c, i) => (
@@ -1447,6 +1647,7 @@ export default function CommandCenter() {
   });
   
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showGlossary, setShowGlossary] = useState(false);
   const [scoreChange, setScoreChange] = useState(null);
   const [prevScore, setPrevScore] = useState(0);
   
@@ -1740,12 +1941,24 @@ export default function CommandCenter() {
                 <span className="text-xs text-emerald-500">/yr</span>
               </div>
               
+              {/* Glossary Button */}
+              <button 
+                onClick={() => setShowGlossary(true)}
+                className="hidden md:flex items-center gap-1 px-3 py-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span className="text-xs">Glossary</span>
+              </button>
+              
               <button className="p-2 text-slate-400 hover:text-white"><Bell className="w-5 h-5" /></button>
               <button className="p-2 text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
             </div>
           </div>
         </div>
       </header>
+      
+      {/* Glossary Modal */}
+      <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Top Row */}
@@ -1885,12 +2098,18 @@ export default function CommandCenter() {
                 <p className="text-xs text-slate-500">{propertyData.municipality}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Flood Zone</p>
+                <p className="text-xs text-slate-500">
+                  <GlossaryTerm term="floodZone">Flood Zone</GlossaryTerm>
+                </p>
                 <p className="text-sm text-white font-medium">{propertyData.floodZone}</p>
-                <p className="text-xs text-slate-500">BFE: {propertyData.bfe}ft</p>
+                <p className="text-xs text-slate-500">
+                  <GlossaryTerm term="bfe">BFE</GlossaryTerm>: {propertyData.bfe}ft
+                </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Structure Value</p>
+                <p className="text-xs text-slate-500">
+                  <GlossaryTerm term="structureValue">Structure Value</GlossaryTerm>
+                </p>
                 <p className="text-sm text-white font-medium">
                   {propertyData.structureValue ? `$${propertyData.structureValue.toLocaleString()}` : 'Not set'}
                 </p>
