@@ -330,7 +330,7 @@ const FOUNDATION_TYPES = {
 };
 
 // =============================================================================
-// CHECKLIST CATEGORIES (Enhanced)
+// CHECKLIST CATEGORIES (Enhanced with full definitions)
 // =============================================================================
 const CHECKLIST_CATEGORIES = [
   {
@@ -338,72 +338,85 @@ const CHECKLIST_CATEGORIES = [
     name: 'Wind Defense',
     icon: Wind,
     color: 'cyan',
+    description: 'Protect your home from hurricane-force winds and flying debris',
     items: [
       {
         id: 'roof_type',
-        name: 'Roof Type & Condition',
+        name: 'What type of roof do you have?',
         type: 'select',
-        options: Object.entries(ROOF_TYPES).map(([key, val]) => ({ 
-          value: key, 
-          label: val.name,
-          score: val.resilienceScore 
-        })),
-        insuranceImpact: 'Varies by type - see details',
-        equityImpact: '+$5,000 - $25,000 depending on upgrade',
-        complianceNote: 'FORTIFIED certification requires architectural minimum'
+        definition: 'Your roof material affects how well your home handles high winds and how much you\'ll get paid if you file an insurance claim.',
+        options: [
+          { value: '3tab', label: '3-Tab Shingles - Basic flat shingles, often on older homes', score: 1 },
+          { value: 'architectural', label: 'Architectural Shingles - Thicker, dimensional shingles (most common)', score: 3 },
+          { value: 'metal_screwdown', label: 'Metal (Screw-Down) - Metal panels with visible screws', score: 4 },
+          { value: 'metal_standing', label: 'Metal (Standing Seam) - Premium metal with hidden fasteners', score: 5 },
+          { value: 'tile', label: 'Tile or Slate - Heavy clay, concrete, or stone tiles', score: 4 },
+          { value: 'flat', label: 'Flat/Low-Slope - Rubber membrane or built-up roofing', score: 2 }
+        ],
+        howToCheck: 'Look at your roof from the street. 3-tab shingles look flat and uniform. Architectural shingles have a dimensional, layered look. Metal roofs are obvious. If unsure, check your home inspection report.',
+        insuranceImpact: 'Metal standing seam = up to 25% wind premium discount. 3-tab = may face ACV penalties.',
+        equityImpact: 'Metal roof adds $15,000-$25,000 to home value. New architectural adds $8,000-$15,000.',
+        complianceNote: 'FORTIFIED certification requires architectural shingles minimum.'
       },
       {
         id: 'roof_age',
-        name: 'Roof Age',
+        name: 'How old is your roof?',
         type: 'number',
-        unit: 'years',
-        description: 'How old is your current roof?',
-        insuranceImpact: 'Roofs 15+ years face ACV penalties reducing claim payouts',
-        equityImpact: 'New roof adds $8,000-$20,000 in value',
-        complianceNote: 'Insurance may deny coverage for roofs 20+ years'
+        unit: 'years old',
+        definition: 'Insurance companies penalize older roofs because they\'re more likely to fail. Roofs over 15 years old often get reduced claim payouts.',
+        placeholder: 'Check your permit records, home inspection, or look for a date on the attic decking.',
+        howToCheck: 'Look at closing documents, permit records, or ask your roofer. Some roofers write the install date on the attic decking.',
+        insuranceImpact: 'Roofs 15+ years face "ACV" penalties - you only get depreciated value, not replacement cost.',
+        equityImpact: 'New roof adds $8,000-$20,000 in home value.',
+        complianceNote: 'Some insurers won\'t cover roofs over 20 years old at all.'
       },
       {
         id: 'roof_deck',
-        name: 'Sealed Roof Deck',
+        name: 'Do you have a sealed roof deck?',
         type: 'toggle',
-        description: 'Secondary water barrier under shingles (peel & stick or SWR)',
-        insuranceImpact: '10-15% additional wind premium discount',
-        equityImpact: '+$3,000 - $5,000 home value',
-        complianceNote: 'Required for FORTIFIED Silver designation'
+        definition: 'A sealed roof deck is a sticky waterproof membrane applied directly to the plywood under your shingles. If shingles blow off in a hurricane, this barrier keeps water from pouring into your home.',
+        howToCheck: 'Check permit records for roof replacement. Ask your roofer. Look in the attic - you might see the membrane overlapping at seams. If your roof was installed after 2012 in a coastal area, you likely have this.',
+        insuranceImpact: '10-15% additional wind premium discount on top of roof type discount.',
+        equityImpact: '+$3,000 - $5,000 home value.',
+        complianceNote: 'Required for FORTIFIED Silver certification. Highly recommended for all shore homes.'
       },
       {
         id: 'roof_fasteners',
-        name: 'Ring-Shank Nails / Stainless Fasteners',
+        name: 'Were ring-shank or stainless steel nails used?',
         type: 'toggle',
-        description: 'Enhanced fasteners that resist pull-through in high winds',
-        insuranceImpact: 'Part of roof system discount package',
-        equityImpact: '+$1,000 - $2,000 home value',
-        complianceNote: 'Code requirement in high-velocity hurricane zones'
+        definition: 'Ring-shank nails have ridges that grip the wood better than smooth nails. In high winds, regular nails can pull through the shingles. Ring-shank nails hold 40% tighter.',
+        howToCheck: 'Ask your roofer or check permit records. If your roof was installed after 2010 in a coastal area, code likely required enhanced fasteners.',
+        insuranceImpact: 'Part of the roof system discount package when documented.',
+        equityImpact: '+$1,000 - $2,000 home value.',
+        complianceNote: 'Required by code in high-velocity hurricane zones.'
       },
       {
         id: 'windows_impact',
-        name: 'Impact-Rated Windows or Shutters',
+        name: 'How are your windows protected?',
         type: 'select',
+        definition: 'During hurricanes, flying debris can shatter windows. Once a window breaks, wind enters your home and can blow off the roof from inside. Protection is critical.',
         options: [
-          { value: 'none', label: 'Standard windows (no protection)', score: 0 },
-          { value: 'film', label: 'Security film only', score: 1 },
-          { value: 'plywood', label: 'Plywood shutters (temporary)', score: 1 },
-          { value: 'accordion', label: 'Accordion/Roll-down shutters', score: 3 },
-          { value: 'impact', label: 'Impact-rated glass', score: 4 },
-          { value: 'both', label: 'Impact glass + shutters', score: 5 }
+          { value: 'none', label: 'No protection - Standard windows with nothing covering them', score: 0 },
+          { value: 'film', label: 'Security film - Clear film applied to glass (minimal protection)', score: 1 },
+          { value: 'plywood', label: 'Plywood - Boards I put up before storms (labor intensive)', score: 1 },
+          { value: 'accordion', label: 'Accordion or roll-down shutters - Permanent shutters that close', score: 3 },
+          { value: 'impact', label: 'Impact-rated glass - Special windows that resist breaking', score: 4 },
+          { value: 'both', label: 'Impact glass AND shutters - Maximum protection', score: 5 }
         ],
-        insuranceImpact: '5-15% premium reduction depending on type',
-        equityImpact: '+$5,000 - $20,000 home value',
-        complianceNote: 'Required in V-zones and for FORTIFIED certification'
+        howToCheck: 'Look at your windows. Impact glass has a small "Impact Rated" or "DP" label in the corner. Shutters are obvious. Check your home inspection or permit records.',
+        insuranceImpact: 'Impact glass = 10-15% discount. Accordion shutters = 5-10% discount.',
+        equityImpact: 'Impact windows add $10,000-$20,000 to home value.',
+        complianceNote: 'Opening protection required in V-zones and for FORTIFIED certification.'
       },
       {
         id: 'garage_door',
-        name: 'Wind-Rated Garage Door',
+        name: 'Is your garage door wind-rated?',
         type: 'toggle',
-        description: 'Garage door rated for high wind pressure (check label for rating)',
-        insuranceImpact: '2-5% premium reduction',
-        equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: 'Garage doors are #1 failure point in hurricanes'
+        definition: 'Garage doors are the #1 point of failure in hurricanes because of their large surface area. If your garage door blows in, wind pressure can blow off your roof from inside.',
+        howToCheck: 'Look for a sticker on the inside of your garage door showing wind rating (look for "Wind Load" or "HVHZ"). Check permit records if the door was replaced.',
+        insuranceImpact: '2-5% premium reduction when documented.',
+        equityImpact: '+$2,000 - $4,000 home value.',
+        complianceNote: 'New garage doors in coastal areas must be wind-rated by code.'
       }
     ]
   },
@@ -412,129 +425,150 @@ const CHECKLIST_CATEGORIES = [
     name: 'Flood Armor',
     icon: Droplets,
     color: 'blue',
+    description: 'Protect your home from rising water and storm surge',
     items: [
       {
         id: 'elevation_cert',
-        name: 'Elevation Certificate',
+        name: 'Do you have an Elevation Certificate?',
         type: 'toggle',
-        description: 'Official FEMA form documenting your home\'s elevation vs. BFE',
-        insuranceImpact: 'Required for accurate NFIP rating - can save $500-$3,000/year',
-        equityImpact: 'Required document for sale in flood zones',
-        complianceNote: 'Mandatory for NJ REAL compliance. Get updated EC after any work.'
+        definition: 'An Elevation Certificate (EC) is an official document prepared by a surveyor that shows exactly how high your home sits compared to the expected flood level (BFE). It\'s like a report card for your home\'s flood risk.',
+        howToCheck: 'Check your closing documents, ask your insurance agent, or contact your town\'s building department. If you bought in a flood zone, you probably received one.',
+        insuranceImpact: 'REQUIRED for accurate flood insurance pricing. Can save $500-$3,000/year if your home is higher than expected.',
+        equityImpact: 'Required for selling a home in a flood zone. Missing EC can delay closings.',
+        complianceNote: 'Mandatory for NJ REAL compliance. Get a new EC after ANY work that might change elevation.'
       },
       {
         id: 'current_elevation',
-        name: 'Current First Floor Elevation',
+        name: 'What is your lowest floor elevation?',
         type: 'number',
-        unit: 'ft NAVD88',
-        description: 'Your lowest floor elevation from Elevation Certificate',
-        insuranceImpact: 'Every foot above BFE = significant premium reduction',
-        equityImpact: 'Homes at/above BFE worth 10-20% more than below',
-        complianceNote: 'Must be BFE+4 for new construction/SI under 2026 rules'
+        unit: 'feet (NAVD88)',
+        definition: 'This number from your Elevation Certificate shows how high your lowest living floor sits. Higher is better - every foot above BFE significantly reduces flood risk and insurance costs.',
+        placeholder: 'Find this on your Elevation Certificate (Section C, "Top of Bottom Floor")',
+        howToCheck: 'Look at your Elevation Certificate, Section C. The number for "Top of Bottom Floor" is what you need.',
+        insuranceImpact: 'Each foot ABOVE BFE = major premium reduction. Each foot BELOW = major premium increase.',
+        equityImpact: 'Homes at or above BFE are worth 10-20% more than comparable homes below BFE.',
+        complianceNote: '2026 rules require BFE + 4 feet for substantial improvements.'
       },
       {
         id: 'foundation_type',
-        name: 'Foundation Type',
+        name: 'What type of foundation does your home have?',
         type: 'select',
-        options: Object.entries(FOUNDATION_TYPES).map(([key, val]) => ({
-          value: key,
-          label: val.name,
-          risk: val.floodRisk
-        })),
-        insuranceImpact: 'Foundation type affects both premium and elevation costs',
-        equityImpact: 'Elevated foundations command premium in flood zones',
-        complianceNote: 'Determines complexity and cost of any required elevation'
+        definition: 'Your foundation type determines how vulnerable you are to flooding and how expensive it would be to raise your home if required.',
+        options: [
+          { value: 'slab', label: 'Slab - Concrete pad at ground level (most vulnerable)', score: 0 },
+          { value: 'crawl', label: 'Crawl space - Short enclosed space under house', score: 1 },
+          { value: 'basement', label: 'Basement - Below-ground living or storage space', score: 0 },
+          { value: 'piers', label: 'Piers/Posts - House sits on concrete or wood posts', score: 3 },
+          { value: 'piles', label: 'Deep piles - House on driven pilings (like beach houses)', score: 4 }
+        ],
+        howToCheck: 'Walk around your house. Can you see under it? Do you have stairs to enter? Is there a basement? Pier homes are usually 4-8 feet off the ground.',
+        insuranceImpact: 'Elevated foundations (piers/piles) can save $2,000-$4,000/year on flood insurance.',
+        equityImpact: 'Properly elevated homes command 15-25% premium in flood zones.',
+        complianceNote: 'Foundation type determines cost if elevation is required ($50K-$400K range).'
       },
       {
         id: 'enclosed_sqft',
-        name: 'Enclosed Area Below BFE (sq ft)',
+        name: 'How much enclosed space is below flood level?',
         type: 'number',
-        unit: 'sq ft',
-        description: 'Garage, crawlspace, or any enclosed area below flood level',
-        insuranceImpact: 'Enclosed areas require proper venting for NFIP compliance',
-        equityImpact: 'Compliant enclosures protect property value',
-        complianceNote: 'Triggers 1:1 venting ratio requirement'
+        unit: 'square feet',
+        definition: 'This includes your garage, crawl space, or any area under your house that has walls around it. This space needs flood vents to let water flow through instead of building up pressure.',
+        placeholder: 'Measure your garage/crawlspace: length × width. Example: 20ft × 20ft = 400 sq ft',
+        howToCheck: 'Measure your garage or enclosed area under the house. Length × Width = square feet.',
+        insuranceImpact: 'Enclosed areas require flood vents. Non-compliant enclosures face insurance penalties.',
+        equityImpact: 'Code-compliant enclosures protect property value.',
+        complianceNote: 'Triggers 1:1 venting requirement - 1 sq inch of vent per 1 sq ft of space.'
       },
       {
         id: 'flood_vents',
-        name: 'Engineered Flood Vents',
+        name: 'How many flood vents do you have?',
         type: 'number',
         unit: 'vents',
-        description: 'Number of ICC-certified engineered flood vents installed',
-        insuranceImpact: 'Proper venting can improve rating by 1+ classes',
-        equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'Each vent typically covers 200 sq ft. Check certification.'
+        definition: 'Flood vents are special openings in your foundation walls that let floodwater flow through your garage/crawlspace instead of pushing against the walls. They open automatically when water rises.',
+        placeholder: 'Count the rectangular vents in your garage/foundation walls. Each ICC-certified vent covers ~200 sq ft.',
+        howToCheck: 'Walk around your foundation and count the vents. Look for rectangular openings, usually 8"×16" with a louver or screen. Check for "ICC Certified" labels.',
+        insuranceImpact: 'Proper venting can improve your NFIP rating class, saving $300-$800/year.',
+        equityImpact: '+$2,000 - $5,000 home value with compliant venting.',
+        complianceNote: 'Need 1 vent per 200 sq ft. A 400 sq ft garage needs 2 vents minimum.'
       },
       {
         id: 'breakaway_walls',
-        name: 'Breakaway Walls',
+        name: 'Are your walls below flood level "breakaway" walls?',
         type: 'toggle',
-        description: 'Walls below BFE designed to break away without damaging structure',
-        insuranceImpact: 'Required for compliant enclosures in V-zones',
-        equityImpact: '+$5,000 - $10,000 home value',
-        complianceNote: 'Code requirement for any walls below BFE in V-zones'
+        definition: 'Breakaway walls are designed to collapse under flood pressure without damaging your house structure. This lets water pass through instead of destroying your foundation.',
+        howToCheck: 'Breakaway walls are typically lightweight (plywood, lattice, or special drywall). If you have solid concrete or CMU block walls enclosing space below BFE in a V-zone, they\'re probably NOT breakaway.',
+        insuranceImpact: 'Required for compliant enclosures in V-zones. Non-compliance = penalties.',
+        equityImpact: '+$5,000 - $10,000 home value.',
+        complianceNote: 'Required by code for any enclosed area below BFE in coastal V-zones.'
       },
       {
         id: 'sump_pump',
-        name: 'Sump Pump with Battery Backup',
+        name: 'Do you have a sump pump with battery backup?',
         type: 'toggle',
-        description: 'Automatic pump with backup power to remove water during outages',
-        insuranceImpact: 'Reduces claim frequency - some insurers offer discounts',
-        equityImpact: '+$1,500 - $3,000 home value',
-        complianceNote: 'Essential for any below-grade spaces'
+        definition: 'A sump pump removes water that collects under or in your home. The battery backup is critical because power often goes out during storms - exactly when you need the pump most.',
+        howToCheck: 'Look in your basement or lowest level for a pit with a pump. Check if there\'s a battery backup unit mounted nearby or if the pump plugs into a battery system.',
+        insuranceImpact: 'Reduces claim frequency - some insurers offer small discounts.',
+        equityImpact: '+$1,500 - $3,000 home value.',
+        complianceNote: 'Essential for any below-grade space. Battery backup is critical for storms.'
       }
     ]
   },
   {
     id: 'systems',
-    name: 'Elevated Mechanicals',
+    name: 'Elevated Systems',
     icon: Zap,
     color: 'violet',
+    description: 'Keep your mechanical equipment above flood waters',
     items: [
       {
         id: 'hvac_location',
-        name: 'HVAC Location',
+        name: 'Where is your HVAC (heating/cooling) equipment?',
         type: 'select',
+        definition: 'Your air conditioner, furnace, and air handler are expensive to replace. If they flood, you could be without heating/cooling for weeks and face a $10,000+ replacement bill.',
         options: [
-          { value: 'ground', label: 'Ground level / Below BFE', score: 0 },
-          { value: 'elevated_partial', label: 'Elevated but below BFE+4', score: 2 },
-          { value: 'elevated_full', label: 'At or above BFE+4', score: 4 },
-          { value: 'roof', label: 'Roof-mounted', score: 5 }
+          { value: 'ground', label: 'Ground level or below - Sitting on ground, in basement, or below flood level', score: 0 },
+          { value: 'elevated_partial', label: 'Somewhat elevated - Raised on a platform but not 4+ feet above BFE', score: 2 },
+          { value: 'elevated_full', label: 'Fully elevated - At least 4 feet above BFE', score: 4 },
+          { value: 'roof', label: 'Roof-mounted - Equipment is on the roof', score: 5 }
         ],
-        insuranceImpact: 'Elevated HVAC reduces contents damage claims significantly',
-        equityImpact: '+$3,000 - $8,000 home value',
-        complianceNote: '2026 CAFE requires HVAC at BFE+4 for substantial improvements'
+        howToCheck: 'Find your outdoor AC unit and indoor air handler. Are they on the ground? On a platform? In the attic or on the roof?',
+        insuranceImpact: 'Elevated HVAC reduces contents damage claims significantly.',
+        equityImpact: '+$3,000 - $8,000 home value with fully elevated systems.',
+        complianceNote: '2026 CAFE rules require HVAC at BFE+4 for any substantial improvement.'
       },
       {
         id: 'electrical_panel',
-        name: 'Electrical Panel Location',
+        name: 'Where is your main electrical panel?',
         type: 'select',
+        definition: 'Your electrical panel (breaker box) is the heart of your home\'s electrical system. If it floods, your entire electrical system may need to be replaced - a $15,000+ repair.',
         options: [
-          { value: 'basement', label: 'Basement / Below grade', score: 0 },
-          { value: 'ground', label: 'Ground floor below BFE', score: 1 },
-          { value: 'elevated', label: 'Elevated above BFE+4', score: 4 }
+          { value: 'basement', label: 'In basement or below grade', score: 0 },
+          { value: 'ground', label: 'Ground floor, below flood level', score: 1 },
+          { value: 'elevated', label: 'Elevated above BFE+4 feet', score: 4 }
         ],
-        insuranceImpact: 'Flood damage to electrical = total system replacement',
-        equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'Code requires elevation for new/replacement panels in flood zones'
+        howToCheck: 'Find your breaker box (gray metal box with switches). What floor is it on? How high off the ground?',
+        insuranceImpact: 'Flood damage to electrical = total system replacement. Major claim.',
+        equityImpact: '+$2,000 - $5,000 home value with elevated panel.',
+        complianceNote: 'New and replacement panels in flood zones must be elevated by code.'
       },
       {
         id: 'water_heater',
-        name: 'Water Heater Elevated',
+        name: 'Is your water heater elevated above flood level?',
         type: 'toggle',
-        description: 'Hot water heater raised above potential flood levels',
-        insuranceImpact: 'Reduces contents claims',
-        equityImpact: '+$1,000 - $2,000 home value',
-        complianceNote: 'Simple, low-cost mitigation measure'
+        definition: 'Water heaters are expensive to replace and can be dangerous if flooded (gas leaks, electrical hazards). Elevating them is a relatively simple mitigation measure.',
+        howToCheck: 'Find your water heater (usually in garage, basement, or utility closet). Is it on the floor or raised on a platform?',
+        insuranceImpact: 'Reduces contents claims.',
+        equityImpact: '+$1,000 - $2,000 home value.',
+        complianceNote: 'Simple, low-cost mitigation. Can be raised on a platform for a few hundred dollars.'
       },
       {
         id: 'washer_dryer',
-        name: 'Washer/Dryer Elevated',
+        name: 'Are your washer and dryer above flood level?',
         type: 'toggle',
-        description: 'Laundry appliances on upper floor or elevated platform',
-        insuranceImpact: 'Reduces contents claims',
-        equityImpact: '+$500 - $1,500 home value',
-        complianceNote: 'Consider relocating to upper floor during renovation'
+        definition: 'Laundry appliances are often in basements or ground floors where they\'re vulnerable to flooding. Moving them to upper floors eliminates this risk.',
+        howToCheck: 'Check where your laundry appliances are located. Are they in a basement, ground floor, or upper level?',
+        insuranceImpact: 'Reduces contents claims.',
+        equityImpact: '+$500 - $1,500 home value.',
+        complianceNote: 'Consider relocating to upper floor during any renovation.'
       }
     ]
   },
@@ -543,93 +577,105 @@ const CHECKLIST_CATEGORIES = [
     name: 'Smart Protection',
     icon: Radio,
     color: 'emerald',
+    description: 'Modern technology to prevent and detect damage',
     items: [
       {
         id: 'water_shutoff',
-        name: 'Smart Water Shutoff Valve',
+        name: 'Do you have an automatic water shutoff valve?',
         type: 'toggle',
-        description: 'Automatic main shutoff when leak detected',
-        insuranceImpact: '5-10% discount from many insurers',
-        equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: 'Prevents catastrophic water damage while away'
+        definition: 'A smart water shutoff valve automatically turns off your home\'s water supply when it detects a leak. This prevents a small leak from becoming a $50,000 disaster while you\'re away.',
+        howToCheck: 'Look at your main water line where it enters your house. Is there a motorized valve with a controller? Brands include Flo, Moen, Phyn.',
+        insuranceImpact: '5-10% homeowner premium discount from many insurers.',
+        equityImpact: '+$2,000 - $4,000 home value.',
+        complianceNote: 'Prevents catastrophic water damage. Especially valuable for second homes.'
       },
       {
         id: 'leak_sensors',
-        name: 'Water Leak Sensors',
+        name: 'Do you have water leak sensors in key areas?',
         type: 'toggle',
-        description: 'Smart sensors near water heater, washing machine, sinks',
-        insuranceImpact: 'Often bundled with shutoff discount',
-        equityImpact: '+$500 - $1,000 home value',
-        complianceNote: 'Early detection prevents major damage'
+        definition: 'Small sensors placed near water heaters, washing machines, under sinks, and in basements that alert your phone if they detect water. Early warning = early action.',
+        howToCheck: 'Check under sinks, near water heater, behind washing machine, in basement. Look for small disc-shaped sensors or sensors connected to a smart home system.',
+        insuranceImpact: 'Often bundled with smart shutoff for insurance discounts.',
+        equityImpact: '+$500 - $1,000 home value.',
+        complianceNote: 'Place near all water sources. Connect to phone for remote alerts.'
       },
       {
         id: 'backup_power',
-        name: 'Backup Power',
+        name: 'What type of backup power do you have?',
         type: 'select',
+        definition: 'Power outages during storms can last days or weeks. Without power, sump pumps stop, freezers thaw, and you may need to evacuate. Backup power keeps critical systems running.',
         options: [
-          { value: 'none', label: 'None', score: 0 },
-          { value: 'portable', label: 'Portable generator', score: 1 },
-          { value: 'standby', label: 'Standby generator (auto-start)', score: 3 },
-          { value: 'battery', label: 'Whole-home battery (Tesla, etc.)', score: 4 },
-          { value: 'solar_battery', label: 'Solar + battery system', score: 5 }
+          { value: 'none', label: 'None - No backup power', score: 0 },
+          { value: 'portable', label: 'Portable generator - Gas generator I connect manually', score: 1 },
+          { value: 'standby', label: 'Standby generator - Automatic generator that kicks in when power fails', score: 3 },
+          { value: 'battery', label: 'Battery backup - Whole-home battery (Tesla Powerwall, etc.)', score: 4 },
+          { value: 'solar_battery', label: 'Solar + battery - Solar panels with battery storage', score: 5 }
         ],
-        insuranceImpact: 'Reduces secondary damage from extended outages',
-        equityImpact: '+$8,000 - $25,000 home value',
-        complianceNote: 'Essential for keeping sump pumps running during storms'
+        howToCheck: 'Do you have a generator? Is it portable (you wheel it out) or permanent (mounted outside)? Do you have solar panels or a battery system?',
+        insuranceImpact: 'Reduces secondary damage from extended outages.',
+        equityImpact: 'Standby generator adds $5,000-$15,000. Solar+battery adds $15,000-$30,000.',
+        complianceNote: 'Essential for sump pumps during storms. Critical for medical equipment.'
       },
       {
         id: 'monitoring',
-        name: 'Home Monitoring System',
+        name: 'Do you have a home monitoring system?',
         type: 'toggle',
-        description: 'Security + environmental monitoring (water, temp, smoke)',
-        insuranceImpact: '5-15% homeowner premium discount',
-        equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'Remote alerts allow faster response to issues'
+        definition: 'Monitoring systems watch for security threats plus environmental hazards like water leaks, temperature extremes, and smoke. They alert you (and optionally a monitoring center) when something\'s wrong.',
+        howToCheck: 'Do you have ADT, SimpliSafe, Ring Alarm, or similar? Does it monitor for water, temperature, and environmental hazards - not just security?',
+        insuranceImpact: '5-15% homeowner premium discount.',
+        equityImpact: '+$2,000 - $5,000 home value.',
+        complianceNote: 'Remote alerts let you respond quickly even when away from home.'
       }
     ]
   },
   {
     id: 'thermal',
-    name: 'Energy Code (2024 IECC)',
+    name: 'Energy & Envelope',
     icon: Thermometer,
     color: 'amber',
+    description: '2024 Energy Code requirements for renovations',
     items: [
       {
         id: 'attic_insulation',
-        name: 'Attic Insulation R-Value',
+        name: 'How much attic insulation do you have?',
         type: 'select',
+        definition: 'Insulation is measured in "R-value" - higher numbers mean better insulation. NJ\'s 2024 energy code requires R-60 in attics for new construction and major renovations.',
         options: [
-          { value: 'unknown', label: 'Unknown / Uninsulated', score: 0 },
-          { value: 'r30', label: 'R-30 or less (below code)', score: 1 },
-          { value: 'r49', label: 'R-49 (previous code)', score: 2 },
-          { value: 'r60', label: 'R-60+ (2024 IECC compliant)', score: 4 }
+          { value: 'unknown', label: 'I don\'t know - Haven\'t checked my attic', score: 0 },
+          { value: 'r30', label: 'R-30 or less - About 10 inches of fiberglass or less', score: 1 },
+          { value: 'r49', label: 'R-49 - About 14-16 inches (previous code requirement)', score: 2 },
+          { value: 'r60', label: 'R-60 or more - About 20+ inches (2024 code compliant)', score: 4 }
         ],
-        insuranceImpact: 'Reduces ice dam claims in winter',
-        equityImpact: '+$3,000 - $6,000 home value',
-        complianceNote: '2024 IECC requires R-60 ceiling insulation for NJ'
+        howToCheck: 'Safely look in your attic. Measure how deep the insulation is. Roughly: 10" = R-30, 16" = R-49, 20"+ = R-60.',
+        insuranceImpact: 'Better insulation reduces ice dam claims in winter.',
+        equityImpact: '+$3,000 - $6,000 home value.',
+        complianceNote: '2024 IECC requires R-60 for any ceiling insulation work in NJ.'
       },
       {
         id: 'window_uvalue',
-        name: 'Window Performance',
+        name: 'How energy-efficient are your windows?',
         type: 'select',
+        definition: 'U-value measures how much heat passes through your windows. Lower is better. Old single-pane windows have terrible U-values (~1.0). Modern code requires U-0.30 or better.',
         options: [
-          { value: 'single', label: 'Single pane (very poor)', score: 0 },
-          { value: 'double_old', label: 'Double pane (pre-2000)', score: 1 },
-          { value: 'double_new', label: 'Double pane (U-0.35-0.40)', score: 2 },
-          { value: 'code', label: 'High-performance (U≤0.30)', score: 4 }
+          { value: 'single', label: 'Single-pane - Old windows, very drafty', score: 0 },
+          { value: 'double_old', label: 'Double-pane (older) - Clear glass, 20+ years old', score: 1 },
+          { value: 'double_new', label: 'Double-pane (newer) - Low-E glass, but not code-compliant', score: 2 },
+          { value: 'code', label: 'High-performance - U-value 0.30 or lower (2024 code)', score: 4 }
         ],
-        insuranceImpact: 'Indirect - reduces energy costs',
-        equityImpact: '+$8,000 - $15,000 home value',
-        complianceNote: '2024 IECC requires U-factor ≤0.30 for new windows'
+        howToCheck: 'Look for a label between the glass panes showing U-value. Or count the panes - single-pane windows are one layer of glass, double-pane are two.',
+        insuranceImpact: 'Indirect - reduces energy costs.',
+        equityImpact: 'New code-compliant windows add $8,000-$15,000 in value.',
+        complianceNote: '2024 IECC requires U≤0.30 for any window replacement.'
       },
       {
         id: 'air_sealing',
-        name: 'Air Sealing & Blower Door Test',
+        name: 'Has your home had professional air sealing?',
         type: 'toggle',
-        description: 'Professional air sealing verified by pressure test',
-        insuranceImpact: 'Reduces moisture/mold damage risk',
-        equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: '2024 IECC requires blower door testing for compliance'
+        definition: 'Air sealing means finding and sealing gaps, cracks, and holes in your home\'s exterior (where pipes enter, around windows, etc.). A "blower door test" measures how leaky your home is.',
+        howToCheck: 'Check your permit records for energy work. Did anyone ever do a "blower door test"? Can you feel drafts around windows and doors?',
+        insuranceImpact: 'Reduces moisture/mold damage risk.',
+        equityImpact: '+$2,000 - $4,000 home value.',
+        complianceNote: '2024 IECC requires blower door testing for major renovations.'
       }
     ]
   },
@@ -638,48 +684,55 @@ const CHECKLIST_CATEGORIES = [
     name: 'Site & Lot',
     icon: Leaf,
     color: 'green',
+    description: 'Your property\'s footprint and drainage',
     items: [
       {
         id: 'lot_sqft',
-        name: 'Total Lot Size',
+        name: 'What is your total lot size?',
         type: 'number',
-        unit: 'sq ft',
-        description: 'Total lot area',
-        insuranceImpact: 'Affects overall property valuation',
-        equityImpact: 'Larger lots command premium',
-        complianceNote: 'Used to calculate impervious cover limits'
+        unit: 'square feet',
+        definition: 'Your lot size determines how much of your property can be covered by buildings, driveways, and patios. Most towns limit coverage to 70-80% to ensure adequate drainage.',
+        placeholder: 'Find this on your tax bill, survey, or property deed. Example: 5,000 sq ft.',
+        howToCheck: 'Check your property tax bill, survey, or deed. Also available on county tax records online.',
+        insuranceImpact: 'Affects overall property valuation.',
+        equityImpact: 'Larger lots command premium prices.',
+        complianceNote: 'Used to calculate impervious cover limits and building setbacks.'
       },
       {
         id: 'impervious_cover',
-        name: 'Impervious Cover',
+        name: 'What percentage of your lot is paved/covered?',
         type: 'select',
+        definition: '"Impervious cover" means surfaces that don\'t absorb water - your roof, driveway, patio, sidewalks. Towns limit this to prevent flooding from stormwater runoff.',
         options: [
-          { value: 'low', label: 'Under 50% (good)', score: 4 },
-          { value: 'moderate', label: '50-70%', score: 2 },
-          { value: 'high', label: '70-85%', score: 1 },
-          { value: 'maxed', label: 'Over 85% (at limit)', score: 0 }
+          { value: 'low', label: 'Under 50% - Lots of lawn and garden space', score: 4 },
+          { value: 'moderate', label: '50-70% - Some room left for additions', score: 2 },
+          { value: 'high', label: '70-85% - Close to or at typical limits', score: 1 },
+          { value: 'maxed', label: 'Over 85% - No room for more coverage', score: 0 }
         ],
-        insuranceImpact: 'High runoff increases flood risk to neighbors',
-        equityImpact: 'Headroom for additions/improvements',
-        complianceNote: 'Many NJ shore towns limit to 70-80%'
+        howToCheck: 'Look at your property from above (Google Maps satellite view). Estimate what percentage is building + driveway + patio vs. grass/garden.',
+        insuranceImpact: 'High runoff increases flood risk to your property and neighbors.',
+        equityImpact: 'Room for expansion increases property value.',
+        complianceNote: 'Most NJ shore towns limit impervious cover to 70-80% of lot.'
       },
       {
         id: 'permeable_surfaces',
-        name: 'Permeable Pavers/Surfaces',
+        name: 'Do you have permeable pavers or surfaces?',
         type: 'toggle',
-        description: 'Driveway, patio, or walkways that allow water infiltration',
-        insuranceImpact: 'May reduce flood risk to structure',
-        equityImpact: '+$3,000 - $8,000 home value',
-        complianceNote: 'Often receive credit toward impervious cover limits'
+        definition: 'Permeable pavers are special bricks or stones that let water soak through into the ground instead of running off. They can help you meet impervious cover limits.',
+        howToCheck: 'Look at your driveway and patio. Permeable pavers have gaps between them filled with gravel, or are made of porous concrete/asphalt. Water soaks in rather than running off.',
+        insuranceImpact: 'May reduce flood risk to your property.',
+        equityImpact: '+$3,000 - $8,000 home value.',
+        complianceNote: 'Often receive credit toward impervious cover limits - you may be able to build more.'
       },
       {
         id: 'rain_garden',
-        name: 'Rain Garden / Bioswale',
+        name: 'Do you have a rain garden or bioswale?',
         type: 'toggle',
-        description: 'Planted depression that captures and filters stormwater',
-        insuranceImpact: 'Demonstrates flood mitigation effort',
-        equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'May satisfy stormwater management requirements'
+        definition: 'A rain garden is a planted low area that collects rainwater from your roof, driveway, or lawn. The plants and soil filter the water as it soaks into the ground.',
+        howToCheck: 'Look for a planted depression in your yard that collects water during rain. It usually has native plants and drains within 24-48 hours.',
+        insuranceImpact: 'Demonstrates flood mitigation effort.',
+        equityImpact: '+$2,000 - $5,000 home value.',
+        complianceNote: 'May satisfy stormwater management requirements for additions.'
       }
     ]
   },
@@ -688,46 +741,52 @@ const CHECKLIST_CATEGORIES = [
     name: 'Documentation & Compliance',
     icon: FileCheck,
     color: 'rose',
+    description: 'Critical paperwork and regulatory status',
     items: [
       {
         id: 'permit_history',
-        name: '10-Year Permit History Known',
+        name: 'Do you know your complete 10-year permit history?',
         type: 'toggle',
-        description: 'Have you obtained records of all permits in last 10 years?',
-        insuranceImpact: 'Prevents surprise SI threshold issues',
-        equityImpact: 'Protects renovation budget',
-        complianceNote: 'Critical for towns with cumulative SI rules (Manasquan, etc.)'
+        definition: 'Many NJ towns track ALL your permitted work over 10 years. When the total hits 50% of your structure value, you\'re required to elevate your entire home. Knowing your history helps you plan renovations safely.',
+        howToCheck: 'Contact your town\'s building department and request permit history. Some towns have this online. Check for kitchen remodels, bathroom updates, roof replacement, deck additions, etc.',
+        insuranceImpact: 'Prevents surprise elevation requirements mid-project.',
+        equityImpact: 'Protects your renovation budget from unexpected costs.',
+        complianceNote: 'CRITICAL for towns like Manasquan with 10-year cumulative rules.'
       },
       {
         id: 'flood_disclosure',
-        name: 'Flood Disclosure Forms Ready',
+        name: 'Are your flood disclosure forms ready?',
         type: 'toggle',
-        description: 'NJ-mandated flood history disclosure for sale/rental',
-        insuranceImpact: 'Required by law since March 2024',
-        equityImpact: 'Avoid legal liability',
-        complianceNote: 'Sellers must disclose all flood history and insurance claims'
+        definition: 'NJ law (since March 2024) requires sellers AND landlords to disclose flood history, insurance claims, and flood zone status. Having these ready protects you legally.',
+        howToCheck: 'Do you have documentation of past flooding, insurance claims, and your flood zone? Have you filled out NJ\'s required disclosure forms?',
+        insuranceImpact: 'Required by law for any sale or rental.',
+        equityImpact: 'Avoid legal liability and delayed closings.',
+        complianceNote: 'Mandatory for all NJ real estate transactions since March 2024.'
       },
       {
         id: 'irz_status',
-        name: 'Inundation Risk Zone (IRZ)',
+        name: 'Is your property in an Inundation Risk Zone (IRZ)?',
         type: 'select',
+        definition: 'IRZ areas are projected to face daily tidal flooding by 2100 due to sea level rise. Properties in IRZ have extra disclosure requirements and may face long-term challenges.',
         options: [
-          { value: 'unknown', label: 'Unknown - need to check', score: 0 },
-          { value: 'no', label: 'Not in IRZ', score: 3 },
-          { value: 'yes', label: 'In IRZ - daily flooding projected by 2100', score: 0 }
+          { value: 'unknown', label: 'I don\'t know - Need to check', score: 0 },
+          { value: 'no', label: 'No - My property is not in an IRZ', score: 3 },
+          { value: 'yes', label: 'Yes - My property is in an IRZ', score: 0 }
         ],
-        insuranceImpact: 'IRZ status may affect future insurability',
-        equityImpact: 'Significant long-term value implications',
-        complianceNote: 'Requires deed notice for any substantial work'
+        howToCheck: 'Check NJ DEP\'s flood mapping tool or ask your local building department. IRZ is based on projected 4.4ft sea level rise by 2100.',
+        insuranceImpact: 'IRZ status may affect future insurability.',
+        equityImpact: 'Significant long-term value implications.',
+        complianceNote: 'IRZ properties require deed notice for any substantial improvement.'
       },
       {
         id: 'legacy_app',
-        name: 'Legacy Window Application',
+        name: 'Are you planning to submit a permit before July 2026?',
         type: 'toggle',
-        description: 'Planning to submit permit before July 2026 deadline?',
-        insuranceImpact: 'Could lock in current (lower) elevation requirements',
-        equityImpact: 'Potential savings of $50,000-$150,000',
-        complianceNote: 'Application must be "complete" - not just submitted'
+        definition: 'The "Legacy Window" allows permit applications submitted before July 2026 to be reviewed under OLD elevation rules (BFE instead of BFE+4). This could save $50,000-$150,000 in elevation costs.',
+        howToCheck: 'Are you planning any major renovation? If so, submitting before July 2026 could grandfather you under easier rules.',
+        insuranceImpact: 'Could lock in lower elevation requirements.',
+        equityImpact: 'Potential savings of $50,000-$150,000.',
+        complianceNote: 'Application must be COMPLETE by deadline - not just submitted.'
       }
     ]
   }
@@ -1178,49 +1237,77 @@ const CodeAlert = ({ title, date, description, type = 'info' }) => {
 // CHECKLIST COMPONENTS
 // =============================================================================
 
+// Status options for toggle-type items
+const STATUS_OPTIONS = [
+  { value: 'no', label: "I don't have this", icon: X, color: 'text-slate-400', bg: 'bg-slate-800 border-slate-600' },
+  { value: 'unsure', label: "I'm not sure", icon: HelpCircle, color: 'text-amber-400', bg: 'bg-amber-900/20 border-amber-500/50' },
+  { value: 'planning', label: "Planning to add", icon: Clock, color: 'text-cyan-400', bg: 'bg-cyan-900/20 border-cyan-500/50' },
+  { value: 'yes', label: "I have this", icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-900/20 border-emerald-500/50' },
+];
+
 const ChecklistInput = ({ item, value, onChange }) => {
   if (item.type === 'toggle') {
+    // Convert old boolean values to new status
+    const currentValue = value === true ? 'yes' : value === false ? 'no' : value || 'no';
+    
     return (
-      <button
-        onClick={() => onChange(!value)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-          value 
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-            : 'bg-slate-800 text-slate-400 border border-slate-600 hover:bg-slate-700'
-        }`}
-      >
-        {value ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-        {value ? 'Yes' : 'No'}
-      </button>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {STATUS_OPTIONS.map(opt => {
+          const isSelected = currentValue === opt.value;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => onChange(opt.value)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                isSelected ? opt.bg : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isSelected ? opt.color : 'text-slate-500'}`} />
+              <span className={isSelected ? opt.color : 'text-slate-500'}>{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
     );
   }
   
   if (item.type === 'select') {
     return (
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
-      >
-        <option value="">Select...</option>
-        {item.options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
+      <div className="space-y-2">
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+        >
+          <option value="">Select your situation...</option>
+          {item.options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {!value && (
+          <p className="text-xs text-slate-500 italic">👆 Choose the option that best describes your home</p>
+        )}
+      </div>
     );
   }
   
   if (item.type === 'number') {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-          placeholder="0"
-          className="w-32 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
-        />
-        {item.unit && <span className="text-sm text-slate-500">{item.unit}</span>}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+            placeholder="Enter number..."
+            className="w-40 px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+          />
+          {item.unit && <span className="text-sm text-slate-400">{item.unit}</span>}
+        </div>
+        {!value && item.placeholder && (
+          <p className="text-xs text-slate-500 italic">💡 {item.placeholder}</p>
+        )}
       </div>
     );
   }
@@ -1231,25 +1318,51 @@ const ChecklistInput = ({ item, value, onChange }) => {
 const ChecklistItem = ({ item, value, onChange }) => {
   const [expanded, setExpanded] = useState(false);
   
-  const hasValue = value !== undefined && value !== null && value !== '' && value !== false;
+  // Determine if item has a meaningful value
+  const hasValue = (() => {
+    if (value === undefined || value === null || value === '') return false;
+    if (value === 'no' || value === 'unsure') return false;
+    if (value === false) return false;
+    return true;
+  })();
+  
+  // Get status for display
+  const getStatusDisplay = () => {
+    if (item.type === 'toggle') {
+      const status = STATUS_OPTIONS.find(s => s.value === value);
+      if (status && value !== 'no') return status;
+    }
+    return null;
+  };
+  
+  const statusDisplay = getStatusDisplay();
   
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
       <div 
         className="p-4 cursor-pointer hover:bg-slate-700/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1">
-            <div className={`w-2 h-2 rounded-full ${hasValue ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+              hasValue ? 'bg-emerald-400' : 
+              value === 'planning' ? 'bg-cyan-400' :
+              value === 'unsure' ? 'bg-amber-400' :
+              'bg-slate-600'
+            }`} />
             <div className="flex-1">
               <h4 className="text-sm font-medium text-slate-200">{item.name}</h4>
-              {item.description && (
-                <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
-              )}
             </div>
           </div>
-          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-2">
+            {statusDisplay && (
+              <span className={`text-xs px-2 py-0.5 rounded ${statusDisplay.bg} ${statusDisplay.color}`}>
+                {statusDisplay.label}
+              </span>
+            )}
+            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </div>
         </div>
       </div>
       
@@ -1262,6 +1375,22 @@ const ChecklistItem = ({ item, value, onChange }) => {
             className="border-t border-slate-700"
           >
             <div className="p-4 space-y-4 bg-slate-900/50">
+              {/* Definition - What is this? */}
+              {item.definition && (
+                <div className="bg-slate-800 rounded-lg p-3 border-l-4 border-cyan-500">
+                  <p className="text-xs text-cyan-400 font-bold mb-1">📖 What is this?</p>
+                  <p className="text-sm text-slate-300">{item.definition}</p>
+                </div>
+              )}
+              
+              {/* How to check */}
+              {item.howToCheck && (
+                <div className="bg-amber-900/10 rounded-lg p-3 border border-amber-500/30">
+                  <p className="text-xs text-amber-400 font-bold mb-1">🔍 How to check</p>
+                  <p className="text-xs text-slate-400">{item.howToCheck}</p>
+                </div>
+              )}
+              
               {/* Input */}
               <div>
                 <ChecklistInput item={item} value={value} onChange={onChange} />
@@ -1272,21 +1401,21 @@ const ChecklistItem = ({ item, value, onChange }) => {
                 <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="w-3 h-3 text-emerald-400" />
-                    <span className="text-[10px] text-emerald-400 uppercase">Equity Impact</span>
+                    <span className="text-[10px] text-emerald-400 uppercase">Home Value Impact</span>
                   </div>
                   <p className="text-xs text-slate-300">{item.equityImpact}</p>
                 </div>
                 <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Shield className="w-3 h-3 text-cyan-400" />
-                    <span className="text-[10px] text-cyan-400 uppercase">Insurance</span>
+                    <span className="text-[10px] text-cyan-400 uppercase">Insurance Impact</span>
                   </div>
                   <p className="text-xs text-slate-300">{item.insuranceImpact}</p>
                 </div>
                 <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Scale className="w-3 h-3 text-violet-400" />
-                    <span className="text-[10px] text-violet-400 uppercase">Compliance</span>
+                    <span className="text-[10px] text-violet-400 uppercase">Code/Compliance</span>
                   </div>
                   <p className="text-xs text-slate-300">{item.complianceNote}</p>
                 </div>
@@ -1759,6 +1888,10 @@ export default function CommandCenter() {
   const score = useMemo(() => {
     let points = 0;
     
+    // Helper to check if toggle item is "yes" (new format) or true (old format)
+    const isYes = (val) => val === 'yes' || val === true;
+    const isPlanning = (val) => val === 'planning';
+    
     // === WIND DEFENSE (max ~25 points) ===
     // Roof type (0-5 based on ROOF_TYPES resilienceScore)
     if (selections.roof_type) {
@@ -1776,11 +1909,13 @@ export default function CommandCenter() {
       else points += 0;                  // May face coverage issues
     }
     
-    // Roof deck sealed (+4)
-    if (selections.roof_deck) points += 4;
+    // Roof deck sealed (+4 if yes, +1 if planning)
+    if (isYes(selections.roof_deck)) points += 4;
+    else if (isPlanning(selections.roof_deck)) points += 1;
     
-    // Ring-shank fasteners (+3)
-    if (selections.roof_fasteners) points += 3;
+    // Ring-shank fasteners (+3 if yes, +1 if planning)
+    if (isYes(selections.roof_fasteners)) points += 3;
+    else if (isPlanning(selections.roof_fasteners)) points += 1;
     
     // Windows/shutters (0-5 based on selection)
     if (selections.windows_impact) {
@@ -1788,8 +1923,9 @@ export default function CommandCenter() {
       points += windowScores[selections.windows_impact] || 0;
     }
     
-    // Wind-rated garage door (+3)
-    if (selections.garage_door) points += 3;
+    // Wind-rated garage door (+3 if yes, +1 if planning)
+    if (isYes(selections.garage_door)) points += 3;
+    else if (isPlanning(selections.garage_door)) points += 1;
     
     // === FLOOD ARMOR (max ~25 points) ===
     // Elevation certificate (+4) - critical document
@@ -1887,24 +2023,28 @@ export default function CommandCenter() {
       points += coverScores[selections.impervious_cover] || 0;
     }
     
-    // Permeable surfaces (+2)
-    if (selections.permeable_surfaces) points += 2;
+    // Permeable surfaces (+2 if yes, +1 if planning)
+    if (isYes(selections.permeable_surfaces)) points += 2;
+    else if (isPlanning(selections.permeable_surfaces)) points += 1;
     
-    // Rain garden (+2)
-    if (selections.rain_garden) points += 2;
+    // Rain garden (+2 if yes, +1 if planning)
+    if (isYes(selections.rain_garden)) points += 2;
+    else if (isPlanning(selections.rain_garden)) points += 1;
     
     // === DOCUMENTATION (max ~10 points) ===
-    // Permit history known (+3)
-    if (selections.permit_history) points += 3;
+    // Permit history known (+3 if yes)
+    if (isYes(selections.permit_history)) points += 3;
     
-    // Flood disclosure ready (+3)
-    if (selections.flood_disclosure) points += 3;
+    // Flood disclosure ready (+3 if yes, +1 if planning)
+    if (isYes(selections.flood_disclosure)) points += 3;
+    else if (isPlanning(selections.flood_disclosure)) points += 1;
     
-    // IRZ status known (not in IRZ = +2)
-    if (selections.irz_status === 'no') points += 2;
+    // IRZ status known (not in IRZ = +3, unknown = 0)
+    if (selections.irz_status === 'no') points += 3;
     
-    // Legacy application (+2)
-    if (selections.legacy_app) points += 2;
+    // Legacy application (+2 if yes/planning)
+    if (isYes(selections.legacy_app)) points += 2;
+    else if (isPlanning(selections.legacy_app)) points += 1;
     
     // === SIZE-BASED ADJUSTMENTS ===
     // Larger homes have more exposure - need more protection
@@ -1978,6 +2118,9 @@ export default function CommandCenter() {
   const insuranceSavings = useMemo(() => {
     let annual = 0;
     
+    // Helper to check if toggle item is "yes" (new format) or true (old format)
+    const isYes = (val) => val === 'yes' || val === true;
+    
     // Size multiplier - larger homes have higher base premiums, so same % discount = more $
     const sqft = propertyData.squareFootage || 2000;
     const sizeMultiplier = sqft < 1500 ? 0.8 : sqft < 2500 ? 1.0 : sqft < 4000 ? 1.3 : 1.6;
@@ -1995,17 +2138,17 @@ export default function CommandCenter() {
     }
     
     // Roof deck
-    if (selections.roof_deck) annual += 600;
+    if (isYes(selections.roof_deck)) annual += 600;
     
     // Windows/shutters
     if (selections.windows_impact === 'impact' || selections.windows_impact === 'both') annual += 800;
     else if (selections.windows_impact === 'accordion') annual += 500;
     
     // Garage door
-    if (selections.garage_door) annual += 200;
+    if (isYes(selections.garage_door)) annual += 200;
     
     // Elevation certificate
-    if (selections.elevation_cert) annual += 1000;
+    if (isYes(selections.elevation_cert)) annual += 1000;
     
     // Flood vents
     if (selections.flood_vents > 0) annual += 500;
@@ -2015,10 +2158,10 @@ export default function CommandCenter() {
     else if (selections.foundation_type === 'piers') annual += 1500;
     
     // Smart water shutoff
-    if (selections.water_shutoff) annual += 250;
+    if (isYes(selections.water_shutoff)) annual += 250;
     
     // Monitoring system
-    if (selections.monitoring) annual += 200;
+    if (isYes(selections.monitoring)) annual += 200;
     
     // Backup power (reduces secondary damage claims)
     if (selections.backup_power === 'standby' || selections.backup_power === 'battery' || selections.backup_power === 'solar_battery') {
