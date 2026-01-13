@@ -1507,7 +1507,7 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
           {/* Square Footage */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Building Square Footage
+              Total Living Space (sq ft)
             </label>
             <input
               type="number"
@@ -1516,8 +1516,46 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
               placeholder="e.g., 2000"
               className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
             />
+          </div>
+          
+          {/* Number of Stories */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Number of Stories
+            </label>
+            <select
+              value={formData.stories || ''}
+              onChange={(e) => {
+                const stories = Number(e.target.value) || 1;
+                const footprint = formData.squareFootage ? Math.round(formData.squareFootage / stories) : 0;
+                setFormData(prev => ({ ...prev, stories, buildingFootprint: footprint }));
+              }}
+              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="">Select...</option>
+              <option value="1">1 Story (Ranch)</option>
+              <option value="1.5">1.5 Stories (Cape Cod)</option>
+              <option value="2">2 Stories</option>
+              <option value="2.5">2.5 Stories</option>
+              <option value="3">3 Stories</option>
+              <option value="4">4+ Stories</option>
+            </select>
+          </div>
+          
+          {/* Lot Size */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Lot Size (sq ft)
+            </label>
+            <input
+              type="number"
+              value={formData.lotSize || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, lotSize: Number(e.target.value) || 0 }))}
+              placeholder="e.g., 5000"
+              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+            />
             <p className="text-xs text-slate-500 mt-1">
-              Used to estimate structure value and calculate thresholds
+              Total lot area from tax records or survey
             </p>
           </div>
           
@@ -1540,6 +1578,50 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
                 <span className="text-emerald-500">50% Threshold:</span>{' '}
                 <span className="font-mono">${Math.round(formData.structureValue * 0.5).toLocaleString()}</span>
               </p>
+              
+              {/* Building Footprint */}
+              {formData.stories && (
+                <p className="text-xs text-slate-400">
+                  <span className="text-slate-500">Building Footprint:</span>{' '}
+                  <span className="font-mono text-white">{Math.round(formData.squareFootage / formData.stories).toLocaleString()} sq ft</span>
+                </p>
+              )}
+              
+              {/* Lot Coverage */}
+              {formData.lotSize > 0 && formData.stories && (
+                <div className="border-t border-slate-700 pt-2 mt-2">
+                  <p className="text-xs text-slate-400">
+                    <span className="text-slate-500">Current Lot Coverage:</span>{' '}
+                    <span className={`font-mono ${
+                      (formData.squareFootage / formData.stories / formData.lotSize) > 0.7 
+                        ? 'text-red-400' 
+                        : (formData.squareFootage / formData.stories / formData.lotSize) > 0.5 
+                          ? 'text-amber-400' 
+                          : 'text-emerald-400'
+                    }`}>
+                      {((formData.squareFootage / formData.stories / formData.lotSize) * 100).toFixed(1)}%
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    <span className="text-slate-500">Remaining at 70% limit:</span>{' '}
+                    <span className="font-mono text-white">
+                      {Math.max(0, Math.round(formData.lotSize * 0.7 - formData.squareFootage / formData.stories)).toLocaleString()} sq ft
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Building Code Alerts */}
+          {formData.squareFootage >= 5000 && (
+            <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-3">
+              <p className="text-xs text-amber-400 font-bold mb-1">⚠️ Large Home Requirements</p>
+              <ul className="text-xs text-amber-300 space-y-1">
+                {formData.squareFootage >= 5000 && <li>• Fire sprinkler system may be required (5,000+ sq ft)</li>}
+                {formData.stories >= 3 && <li>• Additional structural engineering required (3+ stories)</li>}
+                {formData.squareFootage >= 4000 && <li>• Energy modeling may be required under 2024 IECC</li>}
+              </ul>
             </div>
           )}
           
@@ -1625,6 +1707,9 @@ export default function CommandCenter() {
         floodZone: 'AE',
         tidal: true,
         squareFootage: 0,
+        stories: 2,
+        lotSize: 0,
+        buildingFootprint: 0,
         homeValue: 0,
         structureValue: 0,
         permitHistory: 0,
@@ -1639,6 +1724,9 @@ export default function CommandCenter() {
         floodZone: 'AE',
         tidal: true,
         squareFootage: 0,
+        stories: 2,
+        lotSize: 0,
+        buildingFootprint: 0,
         homeValue: 0,
         structureValue: 0,
         permitHistory: 0,
@@ -1818,8 +1906,63 @@ export default function CommandCenter() {
     // Legacy application (+2)
     if (selections.legacy_app) points += 2;
     
-    return Math.min(points, 100);
-  }, [selections, propertyData.bfe]);
+    // === SIZE-BASED ADJUSTMENTS ===
+    // Larger homes have more exposure - need more protection
+    const sqft = propertyData.squareFootage || 0;
+    if (sqft > 0) {
+      // Small homes (<1500) get a bonus for being easier to protect
+      if (sqft < 1500) points += 3;
+      // Medium homes (1500-2500) are baseline
+      else if (sqft <= 2500) points += 0;
+      // Large homes (2500-4000) have slight penalty unless well-protected
+      else if (sqft <= 4000) {
+        // Penalty reduced if they have good protection
+        const hasGoodProtection = selections.roof_type === 'metal_standing' || 
+                                   selections.windows_impact === 'both' ||
+                                   selections.windows_impact === 'impact';
+        points += hasGoodProtection ? 0 : -2;
+      }
+      // Very large homes (4000+) have bigger penalty
+      else {
+        const hasGoodProtection = selections.roof_type === 'metal_standing' && 
+                                   (selections.windows_impact === 'both' || selections.windows_impact === 'impact');
+        points += hasGoodProtection ? 0 : -4;
+      }
+    }
+    
+    // Lot coverage penalty - homes at >70% coverage have no room for improvements
+    if (propertyData.lotSize > 0 && propertyData.stories) {
+      const footprint = propertyData.squareFootage / propertyData.stories;
+      const coverage = footprint / propertyData.lotSize;
+      if (coverage > 0.8) points -= 3;  // Maxed out
+      else if (coverage > 0.7) points -= 1;  // At limit
+      else if (coverage < 0.5) points += 2;  // Room for flood mitigation features
+    }
+    
+    return Math.max(0, Math.min(points, 100));
+  }, [selections, propertyData]);
+  
+  // Calculate lot coverage data
+  const lotCoverageData = useMemo(() => {
+    if (!propertyData.lotSize || !propertyData.stories || !propertyData.squareFootage) {
+      return null;
+    }
+    const footprint = propertyData.squareFootage / propertyData.stories;
+    const currentCoverage = (footprint / propertyData.lotSize) * 100;
+    const maxAllowed = propertyData.lotSize * 0.7; // 70% typical limit
+    const remaining = Math.max(0, maxAllowed - footprint);
+    const atLimit = currentCoverage >= 70;
+    const overLimit = currentCoverage > 80;
+    
+    return {
+      footprint: Math.round(footprint),
+      currentCoverage: currentCoverage.toFixed(1),
+      remaining: Math.round(remaining),
+      atLimit,
+      overLimit,
+      maxAllowed: Math.round(maxAllowed)
+    };
+  }, [propertyData]);
   
   // Track score changes and show animation
   useEffect(() => {
@@ -1831,9 +1974,13 @@ export default function CommandCenter() {
     setPrevScore(score);
   }, [score]);
   
-  // Insurance savings estimate - comprehensive
+  // Insurance savings estimate - comprehensive, scaled by home size
   const insuranceSavings = useMemo(() => {
     let annual = 0;
+    
+    // Size multiplier - larger homes have higher base premiums, so same % discount = more $
+    const sqft = propertyData.squareFootage || 2000;
+    const sizeMultiplier = sqft < 1500 ? 0.8 : sqft < 2500 ? 1.0 : sqft < 4000 ? 1.3 : 1.6;
     
     // Roof type
     if (selections.roof_type === 'metal_standing') annual += 1500;
@@ -1878,8 +2025,9 @@ export default function CommandCenter() {
       annual += 150;
     }
     
-    return annual;
-  }, [selections]);
+    // Apply size multiplier
+    return Math.round(annual * sizeMultiplier);
+  }, [selections, propertyData.squareFootage]);
   
   // Venting compliance
   const ventingStatus = useMemo(() => {
@@ -2043,6 +2191,98 @@ export default function CommandCenter() {
             enclosedSqFt={ventingStatus.sqft}
             ventCount={ventingStatus.vents}
           />
+        )}
+        
+        {/* Lot Coverage Calculator */}
+        {lotCoverageData && (
+          <div className={`bg-slate-800 border-2 rounded-2xl p-4 ${
+            lotCoverageData.overLimit ? 'border-red-500/50' : 
+            lotCoverageData.atLimit ? 'border-amber-500/50' : 
+            'border-slate-700'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Ruler className="w-4 h-4 text-cyan-400" />
+                <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Lot Coverage & Buildable Area</h2>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                lotCoverageData.overLimit ? 'bg-red-500/20 text-red-400' :
+                lotCoverageData.atLimit ? 'bg-amber-500/20 text-amber-400' :
+                'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                {lotCoverageData.overLimit ? 'Over Limit' : lotCoverageData.atLimit ? 'At Limit' : 'Room Available'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <p className="text-xs text-slate-500">Building Footprint</p>
+                <p className="text-lg font-bold text-white">{lotCoverageData.footprint.toLocaleString()} <span className="text-xs text-slate-500">sq ft</span></p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Lot Size</p>
+                <p className="text-lg font-bold text-white">{propertyData.lotSize.toLocaleString()} <span className="text-xs text-slate-500">sq ft</span></p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Current Coverage</p>
+                <p className={`text-lg font-bold ${
+                  lotCoverageData.overLimit ? 'text-red-400' :
+                  lotCoverageData.atLimit ? 'text-amber-400' :
+                  'text-emerald-400'
+                }`}>{lotCoverageData.currentCoverage}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Can Still Build</p>
+                <p className="text-lg font-bold text-cyan-400">{lotCoverageData.remaining.toLocaleString()} <span className="text-xs text-slate-500">sq ft</span></p>
+              </div>
+            </div>
+            
+            {/* Coverage Bar */}
+            <div className="relative h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+              <div className="absolute top-0 bottom-0 left-[70%] w-0.5 bg-amber-500/70 z-10" />
+              <div className="absolute top-0 bottom-0 left-[80%] w-0.5 bg-red-500/70 z-10" />
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(Number(lotCoverageData.currentCoverage), 100)}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={`absolute top-0 bottom-0 left-0 ${
+                  lotCoverageData.overLimit ? 'bg-gradient-to-r from-red-500 to-red-700' :
+                  lotCoverageData.atLimit ? 'bg-gradient-to-r from-amber-500 to-amber-700' :
+                  'bg-gradient-to-r from-cyan-500 to-emerald-500'
+                }`}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] font-mono mt-1">
+              <span className="text-slate-500">0%</span>
+              <span className="text-amber-400">70% typical limit</span>
+              <span className="text-red-400">80%</span>
+              <span className="text-slate-500">100%</span>
+            </div>
+            
+            {/* What Can You Build? */}
+            {lotCoverageData.remaining > 0 && (
+              <div className="mt-4 p-3 bg-slate-900/50 rounded-lg">
+                <p className="text-xs text-slate-400 mb-2">
+                  <strong className="text-cyan-400">What can you build with {lotCoverageData.remaining.toLocaleString()} sq ft?</strong>
+                </p>
+                <ul className="text-xs text-slate-500 space-y-1">
+                  {lotCoverageData.remaining >= 400 && <li>✓ Detached garage (400-600 sq ft)</li>}
+                  {lotCoverageData.remaining >= 200 && <li>✓ Pool house or shed (200-400 sq ft)</li>}
+                  {lotCoverageData.remaining >= 150 && <li>✓ Covered patio or deck (150+ sq ft)</li>}
+                  {lotCoverageData.remaining >= 100 && <li>✓ Small addition or bump-out (100+ sq ft)</li>}
+                  {lotCoverageData.remaining < 100 && <li className="text-amber-400">⚠️ Limited to minor improvements only</li>}
+                </ul>
+              </div>
+            )}
+            
+            {lotCoverageData.remaining <= 0 && (
+              <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                <p className="text-xs text-red-400">
+                  <strong>⚠️ No additional building footprint available.</strong> You'll need to remove existing coverage or seek a variance for any additions.
+                </p>
+              </div>
+            )}
+          </div>
         )}
         
         {/* Code Updates */}
