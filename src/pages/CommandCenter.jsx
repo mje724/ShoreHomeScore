@@ -81,23 +81,50 @@ const COMPLIANCE_INFO = {
 };
 
 // =============================================================================
-// ZIP CODE & REGIONAL DATA
+// ZIP CODE & REGIONAL DATA (with avg $/sqft from 2024-2025 sales data)
 // =============================================================================
 const ZIP_DATA = {
-  '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean', bfe: 9, floodZone: 'AE', tidal: true },
-  '08751': { municipality: 'Seaside Heights', county: 'Ocean', bfe: 10, floodZone: 'AE', tidal: true },
-  '08752': { municipality: 'Seaside Park', county: 'Ocean', bfe: 10, floodZone: 'VE', tidal: true },
-  '08753': { municipality: 'Toms River', county: 'Ocean', bfe: 8, floodZone: 'AE', tidal: true },
-  '08008': { municipality: 'Long Beach Island', county: 'Ocean', bfe: 9, floodZone: 'VE', tidal: true },
-  '08050': { municipality: 'Manahawkin', county: 'Ocean', bfe: 7, floodZone: 'AE', tidal: true },
-  '08736': { municipality: 'Manasquan', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true },
-  '07719': { municipality: 'Belmar', county: 'Monmouth', bfe: 10, floodZone: 'AE', tidal: true },
-  '07750': { municipality: 'Monmouth Beach', county: 'Monmouth', bfe: 11, floodZone: 'VE', tidal: true },
-  '08202': { municipality: 'Avalon', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true },
-  '08226': { municipality: 'Ocean City', county: 'Cape May', bfe: 9, floodZone: 'AE', tidal: true },
-  '08247': { municipality: 'Stone Harbor', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true },
-  '08401': { municipality: 'Atlantic City', county: 'Atlantic', bfe: 9, floodZone: 'AE', tidal: true },
-  '08402': { municipality: 'Margate', county: 'Atlantic', bfe: 8, floodZone: 'AE', tidal: true },
+  // Ocean County
+  '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 425 },
+  '08751': { municipality: 'Seaside Heights', county: 'Ocean', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 335 },
+  '08752': { municipality: 'Seaside Park', county: 'Ocean', bfe: 10, floodZone: 'VE', tidal: true, pricePerSqft: 380 },
+  '08753': { municipality: 'Toms River', county: 'Ocean', bfe: 8, floodZone: 'AE', tidal: true, pricePerSqft: 275 },
+  '08008': { municipality: 'Long Beach Island', county: 'Ocean', bfe: 9, floodZone: 'VE', tidal: true, pricePerSqft: 625 },
+  '08050': { municipality: 'Manahawkin', county: 'Ocean', bfe: 7, floodZone: 'AE', tidal: true, pricePerSqft: 285 },
+  '08721': { municipality: 'Bayville', county: 'Ocean', bfe: 7, floodZone: 'AE', tidal: true, pricePerSqft: 265 },
+  '08723': { municipality: 'Brick', county: 'Ocean', bfe: 8, floodZone: 'AE', tidal: true, pricePerSqft: 295 },
+  '08735': { municipality: 'Lavallette', county: 'Ocean', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 485 },
+  '08738': { municipality: 'Mantoloking', county: 'Ocean', bfe: 11, floodZone: 'VE', tidal: true, pricePerSqft: 850 },
+  '08740': { municipality: 'Ocean Beach', county: 'Ocean', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 395 },
+  '08741': { municipality: 'Pine Beach', county: 'Ocean', bfe: 7, floodZone: 'AE', tidal: true, pricePerSqft: 310 },
+  // Monmouth County
+  '08736': { municipality: 'Manasquan', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 520 },
+  '07719': { municipality: 'Belmar', county: 'Monmouth', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 445 },
+  '07750': { municipality: 'Monmouth Beach', county: 'Monmouth', bfe: 11, floodZone: 'VE', tidal: true, pricePerSqft: 565 },
+  '07720': { municipality: 'Bradley Beach', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 410 },
+  '07756': { municipality: 'Ocean Grove', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 385 },
+  '07762': { municipality: 'Spring Lake', county: 'Monmouth', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 695 },
+  '07760': { municipality: 'Rumson', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 625 },
+  '07732': { municipality: 'Highlands', county: 'Monmouth', bfe: 11, floodZone: 'VE', tidal: true, pricePerSqft: 345 },
+  '07758': { municipality: 'Port Monmouth', county: 'Monmouth', bfe: 10, floodZone: 'AE', tidal: true, pricePerSqft: 295 },
+  // Cape May County
+  '08202': { municipality: 'Avalon', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true, pricePerSqft: 785 },
+  '08226': { municipality: 'Ocean City', county: 'Cape May', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 485 },
+  '08247': { municipality: 'Stone Harbor', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true, pricePerSqft: 825 },
+  '08204': { municipality: 'Cape May', county: 'Cape May', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 545 },
+  '08212': { municipality: 'Cape May Point', county: 'Cape May', bfe: 9, floodZone: 'VE', tidal: true, pricePerSqft: 625 },
+  '08223': { municipality: 'Sea Isle City', county: 'Cape May', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 565 },
+  '08243': { municipality: 'Sea Isle City', county: 'Cape May', bfe: 9, floodZone: 'VE', tidal: true, pricePerSqft: 585 },
+  '08248': { municipality: 'Strathmere', county: 'Cape May', bfe: 9, floodZone: 'VE', tidal: true, pricePerSqft: 495 },
+  '08260': { municipality: 'Wildwood', county: 'Cape May', bfe: 8, floodZone: 'AE', tidal: true, pricePerSqft: 345 },
+  '08270': { municipality: 'Woodbine', county: 'Cape May', bfe: 6, floodZone: 'AE', tidal: false, pricePerSqft: 185 },
+  // Atlantic County
+  '08401': { municipality: 'Atlantic City', county: 'Atlantic', bfe: 9, floodZone: 'AE', tidal: true, pricePerSqft: 225 },
+  '08402': { municipality: 'Margate', county: 'Atlantic', bfe: 8, floodZone: 'AE', tidal: true, pricePerSqft: 465 },
+  '08403': { municipality: 'Longport', county: 'Atlantic', bfe: 9, floodZone: 'VE', tidal: true, pricePerSqft: 585 },
+  '08406': { municipality: 'Ventnor', county: 'Atlantic', bfe: 8, floodZone: 'AE', tidal: true, pricePerSqft: 345 },
+  '08234': { municipality: 'Egg Harbor Township', county: 'Atlantic', bfe: 6, floodZone: 'AE', tidal: false, pricePerSqft: 215 },
+  '08037': { municipality: 'Hammonton', county: 'Atlantic', bfe: 5, floodZone: 'X', tidal: false, pricePerSqft: 195 },
 };
 
 // =============================================================================
@@ -1195,12 +1222,25 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
       bfe: zipInfo.bfe || prev.bfe,
       floodZone: zipInfo.floodZone || prev.floodZone,
       tidal: zipInfo.tidal ?? prev.tidal,
+      pricePerSqft: zipInfo.pricePerSqft || 300,
     }));
+    // Recalculate values if sqft already entered
+    if (prev.squareFootage > 0) {
+      const ppsf = zipInfo.pricePerSqft || 300;
+      const estimatedValue = prev.squareFootage * ppsf;
+      const structureValue = Math.round(estimatedValue * (1 - LAND_VALUE_PERCENT));
+      setFormData(p => ({
+        ...p,
+        homeValue: estimatedValue,
+        structureValue: structureValue,
+      }));
+    }
   };
   
   const handleSqFtChange = (sqft) => {
     const value = parseInt(sqft) || 0;
-    const estimatedValue = value * COST_PER_SQFT;
+    const ppsf = formData.pricePerSqft || ZIP_DATA[formData.zipCode]?.pricePerSqft || 300;
+    const estimatedValue = value * ppsf;
     const structureValue = Math.round(estimatedValue * (1 - LAND_VALUE_PERCENT));
     setFormData(prev => ({
       ...prev,
@@ -1209,6 +1249,8 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
       structureValue: structureValue,
     }));
   };
+  
+  const currentPricePerSqft = formData.pricePerSqft || ZIP_DATA[formData.zipCode]?.pricePerSqft || 300;
   
   if (!isOpen) return null;
   
@@ -1283,9 +1325,12 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
           {formData.squareFootage > 0 && (
             <div className="bg-slate-900/50 rounded-lg p-3 space-y-2">
               <p className="text-xs text-slate-400">
+                <span className="text-slate-500">Avg. Price/SqFt in {formData.zipCode || 'area'}:</span>{' '}
+                <span className="font-mono text-cyan-400">${currentPricePerSqft}/sqft</span>
+              </p>
+              <p className="text-xs text-slate-400">
                 <span className="text-slate-500">Estimated Home Value:</span>{' '}
                 <span className="font-mono text-white">${formData.homeValue?.toLocaleString()}</span>
-                <span className="text-slate-600 ml-1">(@$250/sqft)</span>
               </p>
               <p className="text-xs text-slate-400">
                 <span className="text-slate-500">Structure Value (65%):</span>{' '}
@@ -1402,6 +1447,8 @@ export default function CommandCenter() {
   });
   
   const [showEditModal, setShowEditModal] = useState(false);
+  const [scoreChange, setScoreChange] = useState(null);
+  const [prevScore, setPrevScore] = useState(0);
   
   // Persist to localStorage
   useEffect(() => {
@@ -1435,6 +1482,16 @@ export default function CommandCenter() {
     });
     return Math.min(points, 100);
   }, [selections]);
+  
+  // Track score changes and show animation
+  useEffect(() => {
+    if (prevScore !== 0 && score !== prevScore) {
+      const change = score - prevScore;
+      setScoreChange(change);
+      setTimeout(() => setScoreChange(null), 2000);
+    }
+    setPrevScore(score);
+  }, [score]);
   
   // Insurance savings estimate
   const insuranceSavings = useMemo(() => {
@@ -1475,7 +1532,35 @@ export default function CommandCenter() {
                 <p className="text-xs text-slate-500">NJ Coastal Compliance</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Mini Score in Header */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+                <div className="w-8 h-8 relative">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="#1e293b" strokeWidth="3" />
+                    <circle 
+                      cx="18" cy="18" r="15" fill="none" 
+                      stroke={score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'}
+                      strokeWidth="3" 
+                      strokeLinecap="round"
+                      strokeDasharray={`${score * 0.94} 94`}
+                    />
+                  </svg>
+                </div>
+                <span className="text-sm font-bold text-white">{score}</span>
+                <AnimatePresence>
+                  {scoreChange !== null && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      className={`text-xs font-bold ${scoreChange > 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                    >
+                      {scoreChange > 0 ? '+' : ''}{scoreChange}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
               <button className="p-2 text-slate-400 hover:text-white"><Bell className="w-5 h-5" /></button>
               <button className="p-2 text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
             </div>
@@ -1487,8 +1572,27 @@ export default function CommandCenter() {
         {/* Top Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Score */}
-          <div className="lg:col-span-4 bg-slate-800 border-2 border-slate-700 rounded-2xl p-6 flex flex-col items-center">
+          <div className="lg:col-span-4 bg-slate-800 border-2 border-slate-700 rounded-2xl p-6 flex flex-col items-center relative overflow-hidden">
             <ScoreGauge score={score} />
+            
+            {/* Score Change Animation */}
+            <AnimatePresence>
+              {scoreChange !== null && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                  className={`absolute top-4 right-4 px-3 py-2 rounded-xl font-bold text-lg ${
+                    scoreChange > 0 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                      : 'bg-red-500/20 text-red-400 border border-red-500/50'
+                  }`}
+                >
+                  {scoreChange > 0 ? '+' : ''}{scoreChange}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
             <div className="mt-4 text-center">
               <p className="text-xs text-slate-500">vs. Neighborhood Avg</p>
               <p className="text-sm font-bold text-emerald-400">+{Math.max(score - 35, 0)}%</p>
