@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
 import {
   Home, Shield, Droplets, Thermometer, Zap, FileCheck,
   AlertTriangle, CheckCircle, Clock, TrendingUp, Download,
@@ -8,53 +7,203 @@ import {
   DollarSign, Building, Wind, Battery, Gauge, MapPin,
   FileText, Bell, Users, CheckSquare, Square, CircleDot,
   AlertCircle, ArrowUp, Umbrella, Scale, Leaf, Radio,
-  X, Menu, LogOut, Settings, HelpCircle, Pencil
+  X, Menu, Settings, HelpCircle, Pencil, Calculator,
+  Ruler, Waves, FileWarning, ExternalLink
 } from 'lucide-react';
 
 // =============================================================================
-// CONFIGURATION
+// CONFIGURATION & CONSTANTS
 // =============================================================================
 const LEGACY_WINDOW_END = new Date('2026-07-15');
 const STORM_SEASON_START = new Date('2026-06-01');
+const CAFE_ELEVATION = 4; // +4ft above BFE
+const COST_PER_SQFT = 250; // NJ Shore average
+const LAND_VALUE_PERCENT = 0.35; // Land typically 35% of total value
 
-// =============================================================================
-// ZIP CODE DATA
-// =============================================================================
-const ZIP_DATA = {
-  '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean' },
-  '08751': { municipality: 'Seaside Heights', county: 'Ocean' },
-  '08752': { municipality: 'Seaside Park', county: 'Ocean' },
-  '08753': { municipality: 'Toms River', county: 'Ocean' },
-  '08008': { municipality: 'Long Beach Island', county: 'Ocean' },
-  '08050': { municipality: 'Manahawkin', county: 'Ocean' },
-  '08721': { municipality: 'Bayville', county: 'Ocean' },
-  '08723': { municipality: 'Brick', county: 'Ocean' },
-  '08724': { municipality: 'Brick', county: 'Ocean' },
-  '08735': { municipality: 'Lavallette', county: 'Ocean' },
-  '08738': { municipality: 'Mantoloking', county: 'Ocean' },
-  '08740': { municipality: 'Ocean Beach', county: 'Ocean' },
-  '08741': { municipality: 'Pine Beach', county: 'Ocean' },
-  '07719': { municipality: 'Belmar', county: 'Monmouth' },
-  '07720': { municipality: 'Bradley Beach', county: 'Monmouth' },
-  '07750': { municipality: 'Monmouth Beach', county: 'Monmouth' },
-  '07756': { municipality: 'Ocean Grove', county: 'Monmouth' },
-  '07762': { municipality: 'Spring Lake', county: 'Monmouth' },
-  '08202': { municipality: 'Avalon', county: 'Cape May' },
-  '08204': { municipality: 'Cape May', county: 'Cape May' },
-  '08210': { municipality: 'Cape May Court House', county: 'Cape May' },
-  '08212': { municipality: 'Cape May Point', county: 'Cape May' },
-  '08223': { municipality: 'Sea Isle City', county: 'Cape May' },
-  '08226': { municipality: 'Ocean City', county: 'Cape May' },
-  '08243': { municipality: 'Sea Isle City', county: 'Cape May' },
-  '08247': { municipality: 'Stone Harbor', county: 'Cape May' },
-  '08248': { municipality: 'Strathmere', county: 'Cape May' },
-  '08260': { municipality: 'Wildwood', county: 'Cape May' },
-  '08401': { municipality: 'Atlantic City', county: 'Atlantic' },
-  '08402': { municipality: 'Margate', county: 'Atlantic' },
-  '08403': { municipality: 'Longport', county: 'Atlantic' },
-  '08406': { municipality: 'Ventnor', county: 'Atlantic' },
+// Threshold explanations
+const COMPLIANCE_INFO = {
+  fortyPercent: {
+    title: '40% Yellow Zone',
+    description: 'When cumulative improvements reach 40% of structure value, most NJ municipalities require a "Substantial Improvement" review. This typically means:',
+    consequences: [
+      'Signed Contractor Affidavits required for all work',
+      'Detailed engineering review of proposed improvements',
+      'Higher scrutiny on permit applications',
+      'Warning that you are approaching mandatory elevation threshold'
+    ],
+    citation: 'N.J.A.C. 7:13 - NJ Flood Hazard Area Control Act'
+  },
+  fiftyPercent: {
+    title: '50% Red Zone - Substantial Improvement',
+    description: 'At 50%, your project legally triggers "Substantial Improvement" (SI) under FEMA and NJ REAL rules. This means:',
+    consequences: [
+      'MANDATORY elevation of entire structure to BFE + 4ft',
+      'All mechanical systems must be elevated or protected',
+      'Foundation must meet current V-zone or A-zone standards',
+      'Cannot proceed with renovation until elevation complete',
+      'Typical elevation cost: $150,000 - $400,000+'
+    ],
+    citation: 'FEMA 44 CFR 59.1 & N.J.A.C. 7:13-12.5'
+  },
+  cafeStandard: {
+    title: 'CAFE +4ft Standard (2026)',
+    description: 'The Climate-Adjusted Flood Elevation requires new construction and substantially improved structures in tidal areas to be elevated 4 feet above the current FEMA BFE.',
+    consequences: [
+      'Higher first-floor elevation than previous standards',
+      'Increased construction costs but better long-term protection',
+      'May qualify for significant flood insurance discounts',
+      'Future-proofs against projected sea level rise'
+    ],
+    citation: 'NJ REAL Rules - Effective January 2026'
+  },
+  ventingRatio: {
+    title: '1:1 Flood Venting Requirement',
+    description: 'FEMA and NJ building codes require engineered flood openings in any enclosed area below BFE to allow floodwater to flow through.',
+    consequences: [
+      'Required: 1 square inch of opening per 1 square foot of enclosed area',
+      'Non-engineered openings require 2x the area',
+      'Insufficient venting = insurance penalties and code violations',
+      'Proper venting can improve NFIP rating by 1+ classes'
+    ],
+    citation: 'FEMA TB 1-08 & NJ Uniform Construction Code'
+  },
+  legacyWindow: {
+    title: 'July 2026 Legacy Window',
+    description: 'Applications deemed "complete" by NJDEP within 180 days of NJ REAL rule adoption can be reviewed under OLD elevation standards.',
+    consequences: [
+      'Grandfathered projects may only need BFE (not BFE+4)',
+      'Significant cost savings potential',
+      'Deadline is firm - incomplete applications don\'t qualify',
+      'Requires all supporting documents submitted'
+    ],
+    citation: 'NJ REAL Rules - Grandfathering Provision'
+  }
 };
 
+// =============================================================================
+// ZIP CODE & REGIONAL DATA
+// =============================================================================
+const ZIP_DATA = {
+  '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean', bfe: 9, floodZone: 'AE', tidal: true },
+  '08751': { municipality: 'Seaside Heights', county: 'Ocean', bfe: 10, floodZone: 'AE', tidal: true },
+  '08752': { municipality: 'Seaside Park', county: 'Ocean', bfe: 10, floodZone: 'VE', tidal: true },
+  '08753': { municipality: 'Toms River', county: 'Ocean', bfe: 8, floodZone: 'AE', tidal: true },
+  '08008': { municipality: 'Long Beach Island', county: 'Ocean', bfe: 9, floodZone: 'VE', tidal: true },
+  '08050': { municipality: 'Manahawkin', county: 'Ocean', bfe: 7, floodZone: 'AE', tidal: true },
+  '08736': { municipality: 'Manasquan', county: 'Monmouth', bfe: 9, floodZone: 'AE', tidal: true },
+  '07719': { municipality: 'Belmar', county: 'Monmouth', bfe: 10, floodZone: 'AE', tidal: true },
+  '07750': { municipality: 'Monmouth Beach', county: 'Monmouth', bfe: 11, floodZone: 'VE', tidal: true },
+  '08202': { municipality: 'Avalon', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true },
+  '08226': { municipality: 'Ocean City', county: 'Cape May', bfe: 9, floodZone: 'AE', tidal: true },
+  '08247': { municipality: 'Stone Harbor', county: 'Cape May', bfe: 10, floodZone: 'VE', tidal: true },
+  '08401': { municipality: 'Atlantic City', county: 'Atlantic', bfe: 9, floodZone: 'AE', tidal: true },
+  '08402': { municipality: 'Margate', county: 'Atlantic', bfe: 8, floodZone: 'AE', tidal: true },
+};
+
+// =============================================================================
+// ROOFING HIERARCHY
+// =============================================================================
+const ROOF_TYPES = {
+  '3tab': {
+    name: '3-Tab Shingles',
+    windRating: '60-90 mph',
+    lifespan: '15-20 years',
+    insuranceImpact: 'Highest ACV penalty - up to 25% less payout on claims',
+    resilienceScore: 1,
+    description: 'Basic asphalt shingles. Least wind resistant, prone to blow-off.',
+    recommendation: 'Consider upgrading before next storm season'
+  },
+  'architectural': {
+    name: 'Architectural Shingles',
+    windRating: '110-130 mph',
+    lifespan: '25-30 years',
+    insuranceImpact: 'Standard rating - baseline for most policies',
+    resilienceScore: 3,
+    description: 'Dimensional shingles with better wind resistance and aesthetics.',
+    recommendation: 'Minimum recommended for NJ coastal properties'
+  },
+  'metal_screwdown': {
+    name: 'Metal Screw-Down',
+    windRating: '120-140 mph',
+    lifespan: '40-50 years',
+    insuranceImpact: '10-15% premium reduction potential',
+    resilienceScore: 4,
+    description: 'Metal panels secured with exposed fasteners. Good wind resistance.',
+    recommendation: 'Good choice, but standing seam is superior for coastal'
+  },
+  'metal_standing': {
+    name: 'Metal Standing Seam',
+    windRating: '140-180 mph',
+    lifespan: '50-70 years',
+    insuranceImpact: 'Up to 25% premium reduction + best claim outcomes',
+    resilienceScore: 5,
+    description: 'Premium metal with concealed fasteners. Best wind and leak resistance.',
+    recommendation: 'Gold standard for NJ shore properties'
+  },
+  'tile': {
+    name: 'Tile/Slate',
+    windRating: '125-150 mph (when properly installed)',
+    lifespan: '50-100 years',
+    insuranceImpact: 'Premium credit varies by installation quality',
+    resilienceScore: 4,
+    description: 'Heavy, durable materials. Require reinforced structure.',
+    recommendation: 'Excellent longevity but ensure proper installation'
+  },
+  'flat': {
+    name: 'Flat/Low-Slope',
+    windRating: 'Varies by membrane type',
+    lifespan: '15-30 years',
+    insuranceImpact: 'Requires additional wind mitigation documentation',
+    resilienceScore: 2,
+    description: 'TPO, EPDM, or modified bitumen. Different requirements than pitched.',
+    recommendation: 'Ensure proper drainage and edge securement'
+  }
+};
+
+// =============================================================================
+// FOUNDATION TYPES
+// =============================================================================
+const FOUNDATION_TYPES = {
+  'slab': {
+    name: 'Slab on Grade',
+    floodRisk: 'Highest',
+    elevationCost: '$180,000 - $350,000',
+    description: 'Concrete slab at ground level. Most vulnerable to flooding.',
+    complianceNote: 'If in flood zone, will require elevation at 50% SI threshold'
+  },
+  'crawl': {
+    name: 'Crawl Space',
+    floodRisk: 'High',
+    elevationCost: '$120,000 - $250,000',
+    description: 'Raised floor with enclosed crawl space below.',
+    complianceNote: 'Must have proper flood vents. Often requires wet floodproofing.'
+  },
+  'basement': {
+    name: 'Basement',
+    floodRisk: 'Very High',
+    elevationCost: '$200,000 - $400,000+',
+    description: 'Below-grade living or storage space.',
+    complianceNote: 'Basements prohibited in V-zones. Major compliance challenges.'
+  },
+  'piers': {
+    name: 'Pier/Post Foundation',
+    floodRisk: 'Lower',
+    elevationCost: '$80,000 - $180,000',
+    description: 'Home elevated on concrete or wood piers.',
+    complianceNote: 'Good starting point. May only need to raise higher.'
+  },
+  'piles': {
+    name: 'Deep Pile Foundation',
+    floodRisk: 'Lowest',
+    elevationCost: '$50,000 - $120,000 (for additional height)',
+    description: 'Home on driven piles, often already elevated.',
+    complianceNote: 'Best position for compliance. Check if meets CAFE +4ft.'
+  }
+};
+
+// =============================================================================
+// CHECKLIST CATEGORIES (Enhanced)
+// =============================================================================
 const CHECKLIST_CATEGORIES = [
   {
     id: 'wind',
@@ -64,45 +213,71 @@ const CHECKLIST_CATEGORIES = [
     items: [
       {
         id: 'roof_type',
-        name: 'Impact-Resistant Roof',
-        description: 'Architectural shingles or metal roofing rated for high winds',
-        insuranceImpact: 'Up to 25% premium reduction',
-        equityImpact: '+$8,000 - $15,000 home value',
-        complianceNote: 'Required for FORTIFIED certification',
+        name: 'Roof Type & Condition',
+        type: 'select',
+        options: Object.entries(ROOF_TYPES).map(([key, val]) => ({ 
+          value: key, 
+          label: val.name,
+          score: val.resilienceScore 
+        })),
+        insuranceImpact: 'Varies by type - see details',
+        equityImpact: '+$5,000 - $25,000 depending on upgrade',
+        complianceNote: 'FORTIFIED certification requires architectural minimum'
+      },
+      {
+        id: 'roof_age',
+        name: 'Roof Age',
+        type: 'number',
+        unit: 'years',
+        description: 'How old is your current roof?',
+        insuranceImpact: 'Roofs 15+ years face ACV penalties reducing claim payouts',
+        equityImpact: 'New roof adds $8,000-$20,000 in value',
+        complianceNote: 'Insurance may deny coverage for roofs 20+ years'
       },
       {
         id: 'roof_deck',
         name: 'Sealed Roof Deck',
-        description: 'Secondary water barrier under shingles prevents leaks if shingles blow off',
-        insuranceImpact: '10-15% additional discount',
+        type: 'toggle',
+        description: 'Secondary water barrier under shingles (peel & stick or SWR)',
+        insuranceImpact: '10-15% additional wind premium discount',
         equityImpact: '+$3,000 - $5,000 home value',
-        complianceNote: 'FORTIFIED Silver requirement',
+        complianceNote: 'Required for FORTIFIED Silver designation'
       },
       {
-        id: 'fasteners',
-        name: 'Ring-Shank or Stainless Fasteners',
-        description: 'Corrosion-resistant nails that hold better in high winds',
-        insuranceImpact: 'Part of roof system discount',
+        id: 'roof_fasteners',
+        name: 'Ring-Shank Nails / Stainless Fasteners',
+        type: 'toggle',
+        description: 'Enhanced fasteners that resist pull-through in high winds',
+        insuranceImpact: 'Part of roof system discount package',
         equityImpact: '+$1,000 - $2,000 home value',
-        complianceNote: 'Recommended for coastal zones',
+        complianceNote: 'Code requirement in high-velocity hurricane zones'
       },
       {
-        id: 'windows',
-        name: 'Impact-Rated Windows/Shutters',
-        description: 'Windows rated for windborne debris or hurricane shutters',
-        insuranceImpact: '5-10% premium reduction',
-        equityImpact: '+$5,000 - $12,000 home value',
-        complianceNote: 'Required in V-zones',
+        id: 'windows_impact',
+        name: 'Impact-Rated Windows or Shutters',
+        type: 'select',
+        options: [
+          { value: 'none', label: 'Standard windows (no protection)', score: 0 },
+          { value: 'film', label: 'Security film only', score: 1 },
+          { value: 'plywood', label: 'Plywood shutters (temporary)', score: 1 },
+          { value: 'accordion', label: 'Accordion/Roll-down shutters', score: 3 },
+          { value: 'impact', label: 'Impact-rated glass', score: 4 },
+          { value: 'both', label: 'Impact glass + shutters', score: 5 }
+        ],
+        insuranceImpact: '5-15% premium reduction depending on type',
+        equityImpact: '+$5,000 - $20,000 home value',
+        complianceNote: 'Required in V-zones and for FORTIFIED certification'
       },
       {
         id: 'garage_door',
         name: 'Wind-Rated Garage Door',
-        description: 'Reinforced garage door rated for high wind pressure',
+        type: 'toggle',
+        description: 'Garage door rated for high wind pressure (check label for rating)',
         insuranceImpact: '2-5% premium reduction',
         equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: 'Critical weak point in storms',
-      },
-    ],
+        complianceNote: 'Garage doors are #1 failure point in hurricanes'
+      }
+    ]
   },
   {
     id: 'flood',
@@ -113,68 +288,127 @@ const CHECKLIST_CATEGORIES = [
       {
         id: 'elevation_cert',
         name: 'Elevation Certificate',
-        description: "Official survey documenting your home's elevation relative to flood levels",
-        insuranceImpact: 'Required for accurate NFIP pricing - can save $1,000+/year',
-        equityImpact: 'Required for sale in flood zones',
-        complianceNote: 'Mandatory for NJ REAL compliance',
+        type: 'toggle',
+        description: 'Official FEMA form documenting your home\'s elevation vs. BFE',
+        insuranceImpact: 'Required for accurate NFIP rating - can save $500-$3,000/year',
+        equityImpact: 'Required document for sale in flood zones',
+        complianceNote: 'Mandatory for NJ REAL compliance. Get updated EC after any work.'
+      },
+      {
+        id: 'current_elevation',
+        name: 'Current First Floor Elevation',
+        type: 'number',
+        unit: 'ft NAVD88',
+        description: 'Your lowest floor elevation from Elevation Certificate',
+        insuranceImpact: 'Every foot above BFE = significant premium reduction',
+        equityImpact: 'Homes at/above BFE worth 10-20% more than below',
+        complianceNote: 'Must be BFE+4 for new construction/SI under 2026 rules'
+      },
+      {
+        id: 'foundation_type',
+        name: 'Foundation Type',
+        type: 'select',
+        options: Object.entries(FOUNDATION_TYPES).map(([key, val]) => ({
+          value: key,
+          label: val.name,
+          risk: val.floodRisk
+        })),
+        insuranceImpact: 'Foundation type affects both premium and elevation costs',
+        equityImpact: 'Elevated foundations command premium in flood zones',
+        complianceNote: 'Determines complexity and cost of any required elevation'
+      },
+      {
+        id: 'enclosed_sqft',
+        name: 'Enclosed Area Below BFE (sq ft)',
+        type: 'number',
+        unit: 'sq ft',
+        description: 'Garage, crawlspace, or any enclosed area below flood level',
+        insuranceImpact: 'Enclosed areas require proper venting for NFIP compliance',
+        equityImpact: 'Compliant enclosures protect property value',
+        complianceNote: 'Triggers 1:1 venting ratio requirement'
       },
       {
         id: 'flood_vents',
         name: 'Engineered Flood Vents',
-        description: 'ICC-certified vents that let water flow through foundation',
-        insuranceImpact: 'Up to 1 rating class improvement',
+        type: 'number',
+        unit: 'vents',
+        description: 'Number of ICC-certified engineered flood vents installed',
+        insuranceImpact: 'Proper venting can improve rating by 1+ classes',
         equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: '1 sq inch per 1 sq ft of enclosed area',
+        complianceNote: 'Each vent typically covers 200 sq ft. Check certification.'
       },
       {
-        id: 'elevated_foundation',
-        name: 'Elevated Foundation',
-        description: 'Home raised on piers, piles, or extended foundation',
-        insuranceImpact: 'Major premium reduction - often 50%+',
-        equityImpact: '+$30,000 - $80,000 home value',
-        complianceNote: 'Required at 50% substantial improvement',
+        id: 'breakaway_walls',
+        name: 'Breakaway Walls',
+        type: 'toggle',
+        description: 'Walls below BFE designed to break away without damaging structure',
+        insuranceImpact: 'Required for compliant enclosures in V-zones',
+        equityImpact: '+$5,000 - $10,000 home value',
+        complianceNote: 'Code requirement for any walls below BFE in V-zones'
       },
       {
         id: 'sump_pump',
         name: 'Sump Pump with Battery Backup',
-        description: 'Removes water from basement/crawlspace even during power outage',
-        insuranceImpact: 'Reduces claim likelihood',
+        type: 'toggle',
+        description: 'Automatic pump with backup power to remove water during outages',
+        insuranceImpact: 'Reduces claim frequency - some insurers offer discounts',
         equityImpact: '+$1,500 - $3,000 home value',
-        complianceNote: 'Recommended for all flood zones',
-      },
-    ],
+        complianceNote: 'Essential for any below-grade spaces'
+      }
+    ]
   },
   {
     id: 'systems',
-    name: 'Elevated Systems',
+    name: 'Elevated Mechanicals',
     icon: Zap,
     color: 'violet',
     items: [
       {
-        id: 'hvac_elevated',
-        name: 'HVAC Above BFE +4ft',
-        description: 'Heating/cooling equipment elevated above flood levels',
-        insuranceImpact: 'Reduces contents damage claims',
+        id: 'hvac_location',
+        name: 'HVAC Location',
+        type: 'select',
+        options: [
+          { value: 'ground', label: 'Ground level / Below BFE', score: 0 },
+          { value: 'elevated_partial', label: 'Elevated but below BFE+4', score: 2 },
+          { value: 'elevated_full', label: 'At or above BFE+4', score: 4 },
+          { value: 'roof', label: 'Roof-mounted', score: 5 }
+        ],
+        insuranceImpact: 'Elevated HVAC reduces contents damage claims significantly',
         equityImpact: '+$3,000 - $8,000 home value',
-        complianceNote: 'Required under 2026 CAFE standard',
+        complianceNote: '2026 CAFE requires HVAC at BFE+4 for substantial improvements'
       },
       {
-        id: 'electrical_elevated',
-        name: 'Electrical Panel Above BFE +4ft',
-        description: 'Main electrical panel and wiring elevated above flood levels',
-        insuranceImpact: 'Reduces recovery time and costs',
+        id: 'electrical_panel',
+        name: 'Electrical Panel Location',
+        type: 'select',
+        options: [
+          { value: 'basement', label: 'Basement / Below grade', score: 0 },
+          { value: 'ground', label: 'Ground floor below BFE', score: 1 },
+          { value: 'elevated', label: 'Elevated above BFE+4', score: 4 }
+        ],
+        insuranceImpact: 'Flood damage to electrical = total system replacement',
         equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'Required under 2026 CAFE standard',
+        complianceNote: 'Code requires elevation for new/replacement panels in flood zones'
       },
       {
         id: 'water_heater',
         name: 'Water Heater Elevated',
+        type: 'toggle',
         description: 'Hot water heater raised above potential flood levels',
         insuranceImpact: 'Reduces contents claims',
         equityImpact: '+$1,000 - $2,000 home value',
-        complianceNote: 'Recommended for all flood zones',
+        complianceNote: 'Simple, low-cost mitigation measure'
       },
-    ],
+      {
+        id: 'washer_dryer',
+        name: 'Washer/Dryer Elevated',
+        type: 'toggle',
+        description: 'Laundry appliances on upper floor or elevated platform',
+        insuranceImpact: 'Reduces contents claims',
+        equityImpact: '+$500 - $1,500 home value',
+        complianceNote: 'Consider relocating to upper floor during renovation'
+      }
+    ]
   },
   {
     id: 'tech',
@@ -184,69 +418,142 @@ const CHECKLIST_CATEGORIES = [
     items: [
       {
         id: 'water_shutoff',
-        name: 'Smart Water Shutoff',
-        description: 'Automatic valve that shuts water when leak detected',
+        name: 'Smart Water Shutoff Valve',
+        type: 'toggle',
+        description: 'Automatic main shutoff when leak detected',
         insuranceImpact: '5-10% discount from many insurers',
         equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: 'Prevents catastrophic water damage',
+        complianceNote: 'Prevents catastrophic water damage while away'
       },
       {
         id: 'leak_sensors',
         name: 'Water Leak Sensors',
-        description: 'Sensors in key areas that alert you to leaks',
+        type: 'toggle',
+        description: 'Smart sensors near water heater, washing machine, sinks',
         insuranceImpact: 'Often bundled with shutoff discount',
         equityImpact: '+$500 - $1,000 home value',
-        complianceNote: 'Place near water heater, washing machine, sinks',
+        complianceNote: 'Early detection prevents major damage'
       },
       {
-        id: 'battery_backup',
-        name: 'Whole-Home Battery Backup',
-        description: 'Battery system that powers home during outages',
-        insuranceImpact: 'Reduces secondary damage from outages',
-        equityImpact: '+$10,000 - $20,000 home value',
-        complianceNote: 'Keeps sump pumps running during storms',
+        id: 'backup_power',
+        name: 'Backup Power',
+        type: 'select',
+        options: [
+          { value: 'none', label: 'None', score: 0 },
+          { value: 'portable', label: 'Portable generator', score: 1 },
+          { value: 'standby', label: 'Standby generator (auto-start)', score: 3 },
+          { value: 'battery', label: 'Whole-home battery (Tesla, etc.)', score: 4 },
+          { value: 'solar_battery', label: 'Solar + battery system', score: 5 }
+        ],
+        insuranceImpact: 'Reduces secondary damage from extended outages',
+        equityImpact: '+$8,000 - $25,000 home value',
+        complianceNote: 'Essential for keeping sump pumps running during storms'
       },
       {
-        id: 'generator',
-        name: 'Standby Generator',
-        description: 'Automatic generator that kicks in during power outages',
-        insuranceImpact: 'Reduces secondary damage claims',
-        equityImpact: '+$8,000 - $15,000 home value',
-        complianceNote: 'Essential for medical equipment users',
-      },
-    ],
+        id: 'monitoring',
+        name: 'Home Monitoring System',
+        type: 'toggle',
+        description: 'Security + environmental monitoring (water, temp, smoke)',
+        insuranceImpact: '5-15% homeowner premium discount',
+        equityImpact: '+$2,000 - $5,000 home value',
+        complianceNote: 'Remote alerts allow faster response to issues'
+      }
+    ]
   },
   {
     id: 'thermal',
-    name: 'Energy & Envelope',
+    name: 'Energy Code (2024 IECC)',
     icon: Thermometer,
     color: 'amber',
     items: [
       {
-        id: 'insulation_attic',
-        name: 'R-60 Attic Insulation',
-        description: 'High-performance insulation meeting 2024 IECC standards',
+        id: 'attic_insulation',
+        name: 'Attic Insulation R-Value',
+        type: 'select',
+        options: [
+          { value: 'unknown', label: 'Unknown / Uninsulated', score: 0 },
+          { value: 'r30', label: 'R-30 or less (below code)', score: 1 },
+          { value: 'r49', label: 'R-49 (previous code)', score: 2 },
+          { value: 'r60', label: 'R-60+ (2024 IECC compliant)', score: 4 }
+        ],
         insuranceImpact: 'Reduces ice dam claims in winter',
         equityImpact: '+$3,000 - $6,000 home value',
-        complianceNote: '2024 IECC requirement for NJ',
+        complianceNote: '2024 IECC requires R-60 ceiling insulation for NJ'
       },
       {
-        id: 'windows_energy',
-        name: 'IECC 2024 Windows (U≤0.30)',
-        description: 'High-performance windows meeting latest energy code',
+        id: 'window_uvalue',
+        name: 'Window Performance',
+        type: 'select',
+        options: [
+          { value: 'single', label: 'Single pane (very poor)', score: 0 },
+          { value: 'double_old', label: 'Double pane (pre-2000)', score: 1 },
+          { value: 'double_new', label: 'Double pane (U-0.35-0.40)', score: 2 },
+          { value: 'code', label: 'High-performance (U≤0.30)', score: 4 }
+        ],
         insuranceImpact: 'Indirect - reduces energy costs',
         equityImpact: '+$8,000 - $15,000 home value',
-        complianceNote: 'Required for new windows in renovations',
+        complianceNote: '2024 IECC requires U-factor ≤0.30 for new windows'
       },
       {
         id: 'air_sealing',
         name: 'Air Sealing & Blower Door Test',
-        description: 'Sealing air leaks verified by pressure test',
-        insuranceImpact: 'Reduces moisture damage risk',
+        type: 'toggle',
+        description: 'Professional air sealing verified by pressure test',
+        insuranceImpact: 'Reduces moisture/mold damage risk',
         equityImpact: '+$2,000 - $4,000 home value',
-        complianceNote: '2024 IECC requires testing',
+        complianceNote: '2024 IECC requires blower door testing for compliance'
+      }
+    ]
+  },
+  {
+    id: 'site',
+    name: 'Site & Lot',
+    icon: Leaf,
+    color: 'green',
+    items: [
+      {
+        id: 'lot_sqft',
+        name: 'Total Lot Size',
+        type: 'number',
+        unit: 'sq ft',
+        description: 'Total lot area',
+        insuranceImpact: 'Affects overall property valuation',
+        equityImpact: 'Larger lots command premium',
+        complianceNote: 'Used to calculate impervious cover limits'
       },
-    ],
+      {
+        id: 'impervious_cover',
+        name: 'Impervious Cover',
+        type: 'select',
+        options: [
+          { value: 'low', label: 'Under 50% (good)', score: 4 },
+          { value: 'moderate', label: '50-70%', score: 2 },
+          { value: 'high', label: '70-85%', score: 1 },
+          { value: 'maxed', label: 'Over 85% (at limit)', score: 0 }
+        ],
+        insuranceImpact: 'High runoff increases flood risk to neighbors',
+        equityImpact: 'Headroom for additions/improvements',
+        complianceNote: 'Many NJ shore towns limit to 70-80%'
+      },
+      {
+        id: 'permeable_surfaces',
+        name: 'Permeable Pavers/Surfaces',
+        type: 'toggle',
+        description: 'Driveway, patio, or walkways that allow water infiltration',
+        insuranceImpact: 'May reduce flood risk to structure',
+        equityImpact: '+$3,000 - $8,000 home value',
+        complianceNote: 'Often receive credit toward impervious cover limits'
+      },
+      {
+        id: 'rain_garden',
+        name: 'Rain Garden / Bioswale',
+        type: 'toggle',
+        description: 'Planted depression that captures and filters stormwater',
+        insuranceImpact: 'Demonstrates flood mitigation effort',
+        equityImpact: '+$2,000 - $5,000 home value',
+        complianceNote: 'May satisfy stormwater management requirements'
+      }
+    ]
   },
   {
     id: 'legal',
@@ -255,38 +562,251 @@ const CHECKLIST_CATEGORIES = [
     color: 'rose',
     items: [
       {
-        id: 'permit_audit',
-        name: '10-Year Permit Audit',
-        description: 'Review of all permits to calculate cumulative improvement %',
-        insuranceImpact: 'Prevents surprise elevation requirements',
+        id: 'permit_history',
+        name: '10-Year Permit History Known',
+        type: 'toggle',
+        description: 'Have you obtained records of all permits in last 10 years?',
+        insuranceImpact: 'Prevents surprise SI threshold issues',
         equityImpact: 'Protects renovation budget',
-        complianceNote: 'Critical for 40%/50% threshold tracking',
+        complianceNote: 'Critical for towns with cumulative SI rules (Manasquan, etc.)'
       },
       {
         id: 'flood_disclosure',
-        name: 'Flood Disclosure Forms',
-        description: 'NJ-required disclosure of flood history for sale/rental',
+        name: 'Flood Disclosure Forms Ready',
+        type: 'toggle',
+        description: 'NJ-mandated flood history disclosure for sale/rental',
         insuranceImpact: 'Required by law since March 2024',
         equityImpact: 'Avoid legal liability',
-        complianceNote: 'Mandatory for all sales/rentals in NJ',
+        complianceNote: 'Sellers must disclose all flood history and insurance claims'
+      },
+      {
+        id: 'irz_status',
+        name: 'Inundation Risk Zone (IRZ)',
+        type: 'select',
+        options: [
+          { value: 'unknown', label: 'Unknown - need to check', score: 0 },
+          { value: 'no', label: 'Not in IRZ', score: 3 },
+          { value: 'yes', label: 'In IRZ - daily flooding projected by 2100', score: 0 }
+        ],
+        insuranceImpact: 'IRZ status may affect future insurability',
+        equityImpact: 'Significant long-term value implications',
+        complianceNote: 'Requires deed notice for any substantial work'
       },
       {
         id: 'legacy_app',
         name: 'Legacy Window Application',
-        description: 'Application submitted before July 2026 for old elevation rules',
-        insuranceImpact: 'Locks in current requirements',
-        equityImpact: 'Could save $50K+ in elevation costs',
-        complianceNote: 'Deadline: July 15, 2026',
-      },
-    ],
-  },
+        type: 'toggle',
+        description: 'Planning to submit permit before July 2026 deadline?',
+        insuranceImpact: 'Could lock in current (lower) elevation requirements',
+        equityImpact: 'Potential savings of $50,000-$150,000',
+        complianceNote: 'Application must be "complete" - not just submitted'
+      }
+    ]
+  }
 ];
 
 // =============================================================================
 // HELPER COMPONENTS
 // =============================================================================
 
-const ScoreGauge = ({ score, maxScore = 100, size = 'large' }) => {
+const InfoTooltip = ({ info }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute z-50 left-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-xl"
+            >
+              <h4 className="font-bold text-white mb-2">{info.title}</h4>
+              <p className="text-sm text-slate-300 mb-3">{info.description}</p>
+              <ul className="space-y-1 mb-3">
+                {info.consequences.map((c, i) => (
+                  <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                    <span className="text-amber-400 mt-0.5">•</span>
+                    {c}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-cyan-400 border-t border-slate-700 pt-2">
+                📚 {info.citation}
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const VentingCalculator = ({ enclosedSqFt, ventCount, ventCapacity = 200 }) => {
+  const required = Math.ceil(enclosedSqFt / ventCapacity);
+  const current = ventCount || 0;
+  const deficit = Math.max(required - current, 0);
+  const compliant = current >= required;
+  
+  if (!enclosedSqFt || enclosedSqFt === 0) return null;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      className={`mt-4 p-4 rounded-xl border-2 ${
+        compliant 
+          ? 'bg-emerald-900/20 border-emerald-500/50' 
+          : 'bg-red-900/20 border-red-500/50'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {compliant ? (
+          <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+        ) : (
+          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+        )}
+        <div>
+          <h4 className={`font-bold ${compliant ? 'text-emerald-400' : 'text-red-400'}`}>
+            {compliant ? 'Venting Compliant ✓' : 'Critical: Insufficient Venting'}
+          </h4>
+          <p className="text-sm text-slate-300 mt-1">
+            Your {enclosedSqFt.toLocaleString()} sq ft enclosure requires <strong>{required} engineered vents</strong> (1:1 ratio at 200 sq ft each).
+          </p>
+          {!compliant && (
+            <p className="text-sm text-red-300 mt-2">
+              ⚠️ Add <strong>{deficit} more vent(s)</strong> to satisfy code and unlock insurance discounts.
+            </p>
+          )}
+          <p className="text-xs text-slate-500 mt-2">
+            Based on FEMA TB 1-08 & NJ Uniform Construction Code
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const ThresholdGauge = ({ current, structureValue, permitHistory, proposedWork = 0 }) => {
+  const fortyPct = structureValue * 0.4;
+  const fiftyPct = structureValue * 0.5;
+  const total = permitHistory + proposedWork;
+  const percentage = (total / structureValue) * 100;
+  const remaining40 = Math.max(fortyPct - total, 0);
+  const remaining50 = Math.max(fiftyPct - total, 0);
+  
+  const getZone = () => {
+    if (percentage >= 50) return { color: 'red', label: 'SUBSTANTIAL IMPROVEMENT TRIGGERED', bg: 'from-red-500 to-red-700' };
+    if (percentage >= 40) return { color: 'amber', label: 'YELLOW ZONE - REVIEW REQUIRED', bg: 'from-amber-500 to-amber-700' };
+    return { color: 'emerald', label: 'SAFE ZONE', bg: 'from-emerald-500 to-emerald-700' };
+  };
+  
+  const zone = getZone();
+  
+  return (
+    <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Scale className="w-5 h-5 text-slate-400" />
+          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+            Substantial Improvement Tracker
+          </h3>
+        </div>
+        <InfoTooltip info={percentage >= 50 ? COMPLIANCE_INFO.fiftyPercent : COMPLIANCE_INFO.fortyPercent} />
+      </div>
+      
+      {/* Gauge */}
+      <div className="relative h-8 bg-slate-900 rounded-full overflow-hidden border border-slate-700 mb-4">
+        {/* Zone markers */}
+        <div className="absolute top-0 bottom-0 left-[40%] w-0.5 bg-amber-500/70 z-10" />
+        <div className="absolute top-0 bottom-0 left-[50%] w-0.5 bg-red-500/70 z-10" />
+        
+        {/* Fill */}
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(percentage, 100)}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className={`absolute top-0 bottom-0 left-0 bg-gradient-to-r ${zone.bg}`}
+        />
+        
+        {/* Percentage */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-bold text-white drop-shadow-lg">
+            {percentage.toFixed(1)}%
+          </span>
+        </div>
+      </div>
+      
+      {/* Labels */}
+      <div className="flex justify-between text-[10px] font-mono mb-4">
+        <span className="text-emerald-400">0%</span>
+        <span className="text-amber-400">40%</span>
+        <span className="text-red-400">50%</span>
+        <span className="text-slate-500">100%</span>
+      </div>
+      
+      {/* Status */}
+      <div className={`text-center py-2 rounded-lg ${
+        zone.color === 'red' ? 'bg-red-900/30 text-red-400' :
+        zone.color === 'amber' ? 'bg-amber-900/30 text-amber-400' :
+        'bg-emerald-900/30 text-emerald-400'
+      }`}>
+        <span className="text-xs font-bold">{zone.label}</span>
+      </div>
+      
+      {/* Details */}
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        <div className="bg-slate-900/50 rounded-lg p-3">
+          <p className="text-[10px] text-slate-500 uppercase">10-Year Permits</p>
+          <p className="text-lg font-bold text-white font-mono">${permitHistory.toLocaleString()}</p>
+        </div>
+        <div className="bg-slate-900/50 rounded-lg p-3">
+          <p className="text-[10px] text-slate-500 uppercase">Structure Value</p>
+          <p className="text-lg font-bold text-white font-mono">${structureValue.toLocaleString()}</p>
+        </div>
+        <div className="bg-amber-900/20 rounded-lg p-3 border border-amber-500/30">
+          <p className="text-[10px] text-amber-400 uppercase">Remaining to 40%</p>
+          <p className="text-lg font-bold text-amber-300 font-mono">${remaining40.toLocaleString()}</p>
+        </div>
+        <div className="bg-red-900/20 rounded-lg p-3 border border-red-500/30">
+          <p className="text-[10px] text-red-400 uppercase">Remaining to 50%</p>
+          <p className="text-lg font-bold text-red-300 font-mono">${remaining50.toLocaleString()}</p>
+        </div>
+      </div>
+      
+      {/* Warning */}
+      {percentage >= 40 && percentage < 50 && (
+        <div className="mt-4 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+          <p className="text-xs text-amber-300">
+            <strong>⚠️ Action Required:</strong> Your next permit will require contractor affidavits and enhanced review. 
+            Plan carefully to stay under 50%.
+          </p>
+        </div>
+      )}
+      
+      {percentage >= 50 && (
+        <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+          <p className="text-xs text-red-300">
+            <strong>🚨 Mandatory Elevation:</strong> You have triggered Substantial Improvement. 
+            Your entire structure must be elevated to BFE +4ft before proceeding with any work.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ScoreGauge = ({ score, maxScore = 100 }) => {
   const percentage = (score / maxScore) * 100;
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -298,11 +818,9 @@ const ScoreGauge = ({ score, maxScore = 100, size = 'large' }) => {
   };
   
   const colors = getScoreColor();
-  const dims = size === 'large' ? 'w-48 h-48' : 'w-24 h-24';
-  const textSize = size === 'large' ? 'text-5xl' : 'text-2xl';
   
   return (
-    <div className={`relative ${dims}`}>
+    <div className="relative w-48 h-48">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="45" fill="none" stroke="#1e293b" strokeWidth="8" />
         <motion.circle
@@ -317,27 +835,23 @@ const ScoreGauge = ({ score, maxScore = 100, size = 'large' }) => {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span 
-          className={`${textSize} font-bold text-white`}
+          className="text-5xl font-bold text-white"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
           {score}
         </motion.span>
-        {size === 'large' && (
-          <>
-            <span className="text-xs text-slate-400 uppercase tracking-wider">Resilience Score</span>
-            <span className={`text-xs font-bold ${colors.text} mt-1 px-2 py-0.5 rounded-full bg-slate-800`}>
-              {colors.label}
-            </span>
-          </>
-        )}
+        <span className="text-xs text-slate-400 uppercase tracking-wider">Resilience Score</span>
+        <span className={`text-xs font-bold ${colors.text} mt-1 px-2 py-0.5 rounded-full bg-slate-800`}>
+          {colors.label}
+        </span>
       </div>
     </div>
   );
 };
 
-const CountdownCard = ({ title, date, icon: Icon, color, description }) => {
+const CountdownCard = ({ title, date, icon: Icon, color, description, info }) => {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, expired: false });
   
   useEffect(() => {
@@ -358,14 +872,16 @@ const CountdownCard = ({ title, date, icon: Icon, color, description }) => {
   const colorClasses = {
     amber: 'from-amber-900/30 to-amber-800/20 border-amber-500/50 text-amber-400',
     cyan: 'from-cyan-900/30 to-cyan-800/20 border-cyan-500/50 text-cyan-400',
-    rose: 'from-rose-900/30 to-rose-800/20 border-rose-500/50 text-rose-400',
   };
   
   return (
     <div className={`bg-gradient-to-br ${colorClasses[color]} border-2 rounded-xl p-4`}>
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4" />
-        <span className="text-xs uppercase tracking-wider font-bold">{title}</span>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4" />
+          <span className="text-xs uppercase tracking-wider font-bold">{title}</span>
+        </div>
+        {info && <InfoTooltip info={info} />}
       </div>
       <div className="flex items-baseline gap-1">
         <span className="text-3xl font-bold text-white">{timeLeft.days}</span>
@@ -378,7 +894,7 @@ const CountdownCard = ({ title, date, icon: Icon, color, description }) => {
   );
 };
 
-const StatCard = ({ title, value, subtitle, icon: Icon, color = 'slate', alert = false }) => {
+const StatCard = ({ title, value, subtitle, icon: Icon, color = 'slate', info }) => {
   const colorClasses = {
     slate: 'bg-slate-800 border-slate-700',
     amber: 'bg-amber-900/20 border-amber-500/50',
@@ -390,13 +906,16 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'slate', alert =
     <div className={`${colorClasses[color]} border-2 rounded-xl p-4`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-slate-400 uppercase tracking-wider">{title}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">{title}</p>
+            {info && <InfoTooltip info={info} />}
+          </div>
           <p className="text-2xl font-bold text-white mt-1">{value}</p>
           {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
         </div>
         {Icon && (
-          <div className={`p-2 rounded-lg ${alert ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
-            <Icon className={`w-5 h-5 ${alert ? 'text-amber-400' : 'text-slate-400'}`} />
+          <div className="p-2 rounded-lg bg-slate-700">
+            <Icon className="w-5 h-5 text-slate-400" />
           </div>
         )}
       </div>
@@ -428,16 +947,64 @@ const CodeAlert = ({ title, date, description, type = 'info' }) => {
   );
 };
 
-const ChecklistItem = ({ item, status, onStatusChange }) => {
+// =============================================================================
+// CHECKLIST COMPONENTS
+// =============================================================================
+
+const ChecklistInput = ({ item, value, onChange }) => {
+  if (item.type === 'toggle') {
+    return (
+      <button
+        onClick={() => onChange(!value)}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          value 
+            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+            : 'bg-slate-800 text-slate-400 border border-slate-600 hover:bg-slate-700'
+        }`}
+      >
+        {value ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+        {value ? 'Yes' : 'No'}
+      </button>
+    );
+  }
+  
+  if (item.type === 'select') {
+    return (
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
+      >
+        <option value="">Select...</option>
+        {item.options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    );
+  }
+  
+  if (item.type === 'number') {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          placeholder="0"
+          className="w-32 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
+        />
+        {item.unit && <span className="text-sm text-slate-500">{item.unit}</span>}
+      </div>
+    );
+  }
+  
+  return null;
+};
+
+const ChecklistItem = ({ item, value, onChange }) => {
   const [expanded, setExpanded] = useState(false);
   
-  const statusOptions = [
-    { value: 'none', label: 'Not yet', icon: Square, color: 'text-slate-500' },
-    { value: 'have', label: 'I have this', icon: CheckSquare, color: 'text-emerald-400' },
-    { value: 'planning', label: 'Planning', icon: CircleDot, color: 'text-amber-400' },
-  ];
-  
-  const currentStatus = statusOptions.find(s => s.value === status) || statusOptions[0];
+  const hasValue = value !== undefined && value !== null && value !== '' && value !== false;
   
   return (
     <div className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
@@ -446,21 +1013,13 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const currentIdx = statusOptions.findIndex(s => s.value === status);
-                const nextIdx = (currentIdx + 1) % statusOptions.length;
-                onStatusChange(statusOptions[nextIdx].value);
-              }}
-              className={`p-1 rounded transition-colors ${currentStatus.color}`}
-            >
-              <currentStatus.icon className="w-5 h-5" />
-            </button>
-            <div>
+          <div className="flex items-center gap-3 flex-1">
+            <div className={`w-2 h-2 rounded-full ${hasValue ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            <div className="flex-1">
               <h4 className="text-sm font-medium text-slate-200">{item.name}</h4>
-              <p className="text-xs text-slate-500">{item.description}</p>
+              {item.description && (
+                <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
+              )}
             </div>
           </div>
           <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -475,24 +1034,13 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-slate-700"
           >
-            <div className="p-4 space-y-3 bg-slate-900/50">
-              <div className="flex gap-2">
-                {statusOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => onStatusChange(opt.value)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      status === opt.value 
-                        ? 'bg-slate-700 text-white' 
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                    }`}
-                  >
-                    <opt.icon className="w-3 h-3" />
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="p-4 space-y-4 bg-slate-900/50">
+              {/* Input */}
+              <div>
+                <ChecklistInput item={item} value={value} onChange={onChange} />
               </div>
               
+              {/* Impact Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -516,6 +1064,36 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
                   <p className="text-xs text-slate-300">{item.complianceNote}</p>
                 </div>
               </div>
+              
+              {/* Roof Type Details */}
+              {item.id === 'roof_type' && value && ROOF_TYPES[value] && (
+                <div className="bg-slate-800 border border-slate-600 rounded-lg p-3">
+                  <h5 className="text-sm font-bold text-white mb-2">{ROOF_TYPES[value].name}</h5>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500">Wind Rating:</span>
+                      <span className="text-slate-300 ml-2">{ROOF_TYPES[value].windRating}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Lifespan:</span>
+                      <span className="text-slate-300 ml-2">{ROOF_TYPES[value].lifespan}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-cyan-400 mt-2">💡 {ROOF_TYPES[value].recommendation}</p>
+                </div>
+              )}
+              
+              {/* Foundation Type Details */}
+              {item.id === 'foundation_type' && value && FOUNDATION_TYPES[value] && (
+                <div className="bg-slate-800 border border-slate-600 rounded-lg p-3">
+                  <h5 className="text-sm font-bold text-white mb-2">{FOUNDATION_TYPES[value].name}</h5>
+                  <div className="text-xs space-y-1">
+                    <p><span className="text-slate-500">Flood Risk:</span> <span className="text-amber-400">{FOUNDATION_TYPES[value].floodRisk}</span></p>
+                    <p><span className="text-slate-500">Typical Elevation Cost:</span> <span className="text-slate-300">{FOUNDATION_TYPES[value].elevationCost}</span></p>
+                  </div>
+                  <p className="text-xs text-violet-400 mt-2">📋 {FOUNDATION_TYPES[value].complianceNote}</p>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -525,11 +1103,13 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
 };
 
 const ChecklistCategory = ({ category, selections, onSelectionChange }) => {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const Icon = category.icon;
   
-  const completedCount = category.items.filter(item => selections[item.id] === 'have').length;
-  const plannedCount = category.items.filter(item => selections[item.id] === 'planning').length;
+  const filledCount = category.items.filter(item => {
+    const val = selections[item.id];
+    return val !== undefined && val !== null && val !== '' && val !== false;
+  }).length;
   
   const colorClasses = {
     cyan: 'text-cyan-400 bg-cyan-500/20',
@@ -538,6 +1118,7 @@ const ChecklistCategory = ({ category, selections, onSelectionChange }) => {
     emerald: 'text-emerald-400 bg-emerald-500/20',
     amber: 'text-amber-400 bg-amber-500/20',
     rose: 'text-rose-400 bg-rose-500/20',
+    green: 'text-green-400 bg-green-500/20',
   };
   
   return (
@@ -553,11 +1134,19 @@ const ChecklistCategory = ({ category, selections, onSelectionChange }) => {
           <div className="text-left">
             <h3 className="text-base font-bold text-slate-200">{category.name}</h3>
             <p className="text-xs text-slate-500">
-              {completedCount} complete • {plannedCount} planned • {category.items.length - completedCount - plannedCount} remaining
+              {filledCount} of {category.items.length} completed
             </p>
           </div>
         </div>
-        <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        <div className="flex items-center gap-3">
+          <div className="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all"
+              style={{ width: `${(filledCount / category.items.length) * 100}%` }}
+            />
+          </div>
+          <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
       </button>
       
       <AnimatePresence>
@@ -573,8 +1162,8 @@ const ChecklistCategory = ({ category, selections, onSelectionChange }) => {
                 <ChecklistItem
                   key={item.id}
                   item={item}
-                  status={selections[item.id] || 'none'}
-                  onStatusChange={(value) => onSelectionChange(item.id, value)}
+                  value={selections[item.id]}
+                  onChange={(value) => onSelectionChange(item.id, value)}
                 />
               ))}
             </div>
@@ -597,38 +1186,49 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
   
   const handleZipChange = (zip) => {
     const cleaned = zip.replace(/\D/g, '').slice(0, 5);
-    const zipInfo = ZIP_DATA[cleaned] || { municipality: '', county: '' };
+    const zipInfo = ZIP_DATA[cleaned] || {};
     setFormData(prev => ({
       ...prev,
       zipCode: cleaned,
-      municipality: zipInfo.municipality || prev.municipality,
-      county: zipInfo.county || prev.county,
+      municipality: zipInfo.municipality || '',
+      county: zipInfo.county || '',
+      bfe: zipInfo.bfe || prev.bfe,
+      floodZone: zipInfo.floodZone || prev.floodZone,
+      tidal: zipInfo.tidal ?? prev.tidal,
     }));
   };
   
-  const handleSave = () => {
-    onSave(formData);
-    onClose();
+  const handleSqFtChange = (sqft) => {
+    const value = parseInt(sqft) || 0;
+    const estimatedValue = value * COST_PER_SQFT;
+    const structureValue = Math.round(estimatedValue * (1 - LAND_VALUE_PERCENT));
+    setFormData(prev => ({
+      ...prev,
+      squareFootage: value,
+      homeValue: estimatedValue,
+      structureValue: structureValue,
+    }));
   };
   
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-slate-800 border-2 border-slate-600 rounded-2xl p-6 w-full max-w-md"
+        className="bg-slate-800 border-2 border-slate-600 rounded-2xl p-6 w-full max-w-lg my-8"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-white">Edit Property Details</h3>
+          <h3 className="text-lg font-bold text-white">Property Details</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          {/* Zip Code */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Zip Code <span className="text-cyan-400">*</span>
@@ -638,25 +1238,17 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
               value={formData.zipCode}
               onChange={(e) => handleZipChange(e.target.value)}
               placeholder="e.g., 08742"
-              className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg font-mono"
+              className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white text-lg font-mono focus:border-cyan-500 focus:outline-none"
               maxLength={5}
             />
-            <p className="text-xs text-slate-500 mt-1">Used for local code updates & insurance estimates</p>
+            {formData.municipality && (
+              <p className="text-xs text-slate-500 mt-1">
+                {formData.municipality}, {formData.county} County • BFE: {formData.bfe}ft • Zone: {formData.floodZone}
+              </p>
+            )}
           </div>
           
-          {formData.municipality && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Municipality</label>
-                <p className="text-sm text-slate-300">{formData.municipality}</p>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">County</label>
-                <p className="text-sm text-slate-300">{formData.county}</p>
-              </div>
-            </div>
-          )}
-          
+          {/* Address */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Address <span className="text-slate-500 text-xs">(optional)</span>
@@ -665,30 +1257,74 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
               type="text"
               value={formData.address}
               onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              placeholder="e.g., 123 Ocean Ave"
-              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+              placeholder="123 Ocean Ave"
+              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
             />
           </div>
           
+          {/* Square Footage */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Estimated Home Value</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Building Square Footage
+            </label>
+            <input
+              type="number"
+              value={formData.squareFootage || ''}
+              onChange={(e) => handleSqFtChange(e.target.value)}
+              placeholder="e.g., 2000"
+              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Used to estimate structure value and calculate thresholds
+            </p>
+          </div>
+          
+          {/* Auto-calculated values */}
+          {formData.squareFootage > 0 && (
+            <div className="bg-slate-900/50 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-slate-400">
+                <span className="text-slate-500">Estimated Home Value:</span>{' '}
+                <span className="font-mono text-white">${formData.homeValue?.toLocaleString()}</span>
+                <span className="text-slate-600 ml-1">(@$250/sqft)</span>
+              </p>
+              <p className="text-xs text-slate-400">
+                <span className="text-slate-500">Structure Value (65%):</span>{' '}
+                <span className="font-mono text-white">${formData.structureValue?.toLocaleString()}</span>
+              </p>
+              <p className="text-xs text-emerald-400">
+                <span className="text-emerald-500">50% Threshold:</span>{' '}
+                <span className="font-mono">${Math.round(formData.structureValue * 0.5).toLocaleString()}</span>
+              </p>
+            </div>
+          )}
+          
+          {/* Manual Override */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Structure Value <span className="text-slate-500 text-xs">(override)</span>
+            </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
               <input
                 type="text"
-                value={formData.homeValue ? formData.homeValue.toLocaleString() : ''}
+                value={formData.structureValue ? formData.structureValue.toLocaleString() : ''}
                 onChange={(e) => {
                   const value = parseInt(e.target.value.replace(/\D/g, '')) || 0;
-                  setFormData(prev => ({ ...prev, homeValue: value, structureValue: Math.round(value * 0.7) }));
+                  setFormData(prev => ({ ...prev, structureValue: value }));
                 }}
-                placeholder="500,000"
-                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
               />
             </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Use assessed value minus land from tax records for accuracy
+            </p>
           </div>
           
+          {/* 10-Year Permit History */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">10-Year Permit History</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              10-Year Permit History
+            </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
               <input
@@ -699,9 +1335,12 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
                   setFormData(prev => ({ ...prev, permitHistory: value }));
                 }}
                 placeholder="0"
-                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
               />
             </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Total cost of all permitted work in last 10 years
+            </p>
           </div>
         </div>
         
@@ -709,7 +1348,7 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
           <button onClick={onClose} className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-colors">
             Cancel
           </button>
-          <button onClick={handleSave} className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl transition-colors">
+          <button onClick={() => { onSave(formData); onClose(); }} className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl transition-colors">
             Save Changes
           </button>
         </div>
@@ -722,35 +1361,41 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
 // MAIN COMPONENT
 // =============================================================================
 export default function CommandCenter() {
-  const navigate = useNavigate();
-  
   const [selections, setSelections] = useState(() => {
     try {
-      const saved = localStorage.getItem('shorehomescore_selections');
+      const saved = localStorage.getItem('shs_selections_v2');
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
   });
   
   const [propertyData, setPropertyData] = useState(() => {
     try {
-      const saved = localStorage.getItem('shorehomescore_property');
+      const saved = localStorage.getItem('shs_property_v2');
       return saved ? JSON.parse(saved) : {
         address: '',
-        zipCode: '08742',
-        municipality: 'Point Pleasant Beach',
-        county: 'Ocean',
-        homeValue: 500000,
-        structureValue: 350000,
+        zipCode: '',
+        municipality: '',
+        county: '',
+        bfe: 9,
+        floodZone: 'AE',
+        tidal: true,
+        squareFootage: 0,
+        homeValue: 0,
+        structureValue: 0,
         permitHistory: 0,
       };
     } catch {
       return {
         address: '',
-        zipCode: '08742',
-        municipality: 'Point Pleasant Beach',
-        county: 'Ocean',
-        homeValue: 500000,
-        structureValue: 350000,
+        zipCode: '',
+        municipality: '',
+        county: '',
+        bfe: 9,
+        floodZone: 'AE',
+        tidal: true,
+        squareFootage: 0,
+        homeValue: 0,
+        structureValue: 0,
         permitHistory: 0,
       };
     }
@@ -758,55 +1403,67 @@ export default function CommandCenter() {
   
   const [showEditModal, setShowEditModal] = useState(false);
   
+  // Persist to localStorage
   useEffect(() => {
-    localStorage.setItem('shorehomescore_selections', JSON.stringify(selections));
+    localStorage.setItem('shs_selections_v2', JSON.stringify(selections));
   }, [selections]);
   
   useEffect(() => {
-    localStorage.setItem('shorehomescore_property', JSON.stringify(propertyData));
+    localStorage.setItem('shs_property_v2', JSON.stringify(propertyData));
   }, [propertyData]);
   
+  // Auto-open modal if no zip
+  useEffect(() => {
+    if (!propertyData.zipCode) {
+      setShowEditModal(true);
+    }
+  }, []);
+  
+  // Calculate score
   const score = useMemo(() => {
     let points = 0;
-    Object.entries(selections).forEach(([id, status]) => {
-      if (status === 'have') points += 4;
-      else if (status === 'planning') points += 1;
+    CHECKLIST_CATEGORIES.forEach(cat => {
+      cat.items.forEach(item => {
+        const val = selections[item.id];
+        if (val === true) points += 3;
+        else if (item.type === 'select' && val) {
+          const opt = item.options?.find(o => o.value === val);
+          points += opt?.score || 2;
+        }
+        else if (item.type === 'number' && val) points += 2;
+      });
     });
     return Math.min(points, 100);
   }, [selections]);
   
-  const thresholdData = useMemo(() => {
-    const fortyPct = propertyData.structureValue * 0.4;
-    const currentPct = (propertyData.permitHistory / propertyData.structureValue) * 100;
-    const remaining = fortyPct - propertyData.permitHistory;
-    return {
-      fortyPct,
-      currentPct: currentPct.toFixed(1),
-      remaining: Math.max(remaining, 0),
-      inYellow: currentPct >= 40 && currentPct < 50,
-      inRed: currentPct >= 50,
-    };
-  }, [propertyData]);
-  
+  // Insurance savings estimate
   const insuranceSavings = useMemo(() => {
     let annual = 0;
-    if (selections.roof_type === 'have') annual += 800;
-    if (selections.roof_deck === 'have') annual += 400;
-    if (selections.windows === 'have') annual += 300;
-    if (selections.elevation_cert === 'have') annual += 1200;
-    if (selections.flood_vents === 'have') annual += 500;
-    if (selections.elevated_foundation === 'have') annual += 2000;
-    if (selections.water_shutoff === 'have') annual += 200;
+    if (selections.roof_type === 'metal_standing') annual += 1200;
+    else if (selections.roof_type === 'metal_screwdown') annual += 800;
+    else if (selections.roof_type === 'architectural') annual += 400;
+    if (selections.roof_deck) annual += 500;
+    if (selections.windows_impact === 'impact' || selections.windows_impact === 'both') annual += 600;
+    else if (selections.windows_impact === 'accordion') annual += 400;
+    if (selections.elevation_cert) annual += 800;
+    if (selections.flood_vents > 0) annual += 400;
+    if (selections.water_shutoff) annual += 200;
+    if (selections.monitoring) annual += 150;
     return annual;
   }, [selections]);
   
-  const handleSelectionChange = (itemId, value) => {
-    setSelections(prev => ({ ...prev, [itemId]: value }));
-  };
+  // Venting compliance
+  const ventingStatus = useMemo(() => {
+    const sqft = selections.enclosed_sqft || 0;
+    const vents = selections.flood_vents || 0;
+    const required = Math.ceil(sqft / 200);
+    return { sqft, vents, required, compliant: vents >= required };
+  }, [selections]);
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -815,39 +1472,41 @@ export default function CommandCenter() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white">ShoreHomeScore</h1>
-                <p className="text-xs text-slate-500">NJ Coastal Resilience</p>
+                <p className="text-xs text-slate-500">NJ Coastal Compliance</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <button className="p-2 text-slate-400 hover:text-white transition-colors">
-                <Bell className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-slate-400 hover:text-white transition-colors">
-                <Settings className="w-5 h-5" />
-              </button>
+            <div className="flex items-center gap-2">
+              <button className="p-2 text-slate-400 hover:text-white"><Bell className="w-5 h-5" /></button>
+              <button className="p-2 text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Top Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Score */}
           <div className="lg:col-span-4 bg-slate-800 border-2 border-slate-700 rounded-2xl p-6 flex flex-col items-center">
             <ScoreGauge score={score} />
             <div className="mt-4 text-center">
               <p className="text-xs text-slate-500">vs. Neighborhood Avg</p>
-              <p className="text-sm font-bold text-emerald-400">+12%</p>
-              <p className="text-[10px] text-slate-600 mt-1">Based on 150 homes in {propertyData.zipCode}</p>
+              <p className="text-sm font-bold text-emerald-400">+{Math.max(score - 35, 0)}%</p>
+              {propertyData.zipCode && (
+                <p className="text-[10px] text-slate-600 mt-1">Based on homes in {propertyData.zipCode}</p>
+              )}
             </div>
           </div>
           
+          {/* Stats */}
           <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <CountdownCard
               title="Legacy Window"
               date={LEGACY_WINDOW_END}
               icon={Clock}
               color="amber"
-              description="Submit applications before deadline to qualify under old elevation standards"
+              description="Submit complete applications to qualify under old elevation standards"
+              info={COMPLIANCE_INFO.legacyWindow}
             />
             <CountdownCard
               title="Storm Season"
@@ -857,15 +1516,14 @@ export default function CommandCenter() {
               description="Days until June 1 hurricane season begins"
             />
             <StatCard
-              title="40% Threshold"
-              value={`$${(thresholdData.remaining / 1000).toFixed(0)}K`}
-              subtitle="Remaining before affidavit required"
-              icon={AlertTriangle}
-              color={thresholdData.inYellow ? 'amber' : thresholdData.inRed ? 'red' : 'slate'}
-              alert={thresholdData.inYellow || thresholdData.inRed}
+              title="CAFE Standard"
+              value={`BFE +${CAFE_ELEVATION}ft`}
+              subtitle={propertyData.bfe ? `Required: ${propertyData.bfe + CAFE_ELEVATION}ft NAVD88` : 'Enter zip for local BFE'}
+              icon={ArrowUp}
+              info={COMPLIANCE_INFO.cafeStandard}
             />
             <StatCard
-              title="Insurance Savings"
+              title="Est. Insurance Savings"
               value={`$${insuranceSavings.toLocaleString()}/yr`}
               subtitle={`$${(insuranceSavings * 10).toLocaleString()} over 10 years`}
               icon={TrendingUp}
@@ -874,33 +1532,53 @@ export default function CommandCenter() {
           </div>
         </div>
         
+        {/* Threshold Tracker */}
+        {propertyData.structureValue > 0 && (
+          <ThresholdGauge
+            current={0}
+            structureValue={propertyData.structureValue}
+            permitHistory={propertyData.permitHistory}
+          />
+        )}
+        
+        {/* Venting Calculator */}
+        {ventingStatus.sqft > 0 && (
+          <VentingCalculator
+            enclosedSqFt={ventingStatus.sqft}
+            ventCount={ventingStatus.vents}
+          />
+        )}
+        
+        {/* Code Updates */}
         <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Code & Regulatory Updates</h2>
+            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Regulatory Updates</h2>
           </div>
           <div className="space-y-2">
             <CodeAlert
               title="NJ REAL 2026 CAFE Standard Now in Effect"
               date="Jan 2026"
-              description="New construction and substantial improvements in tidal flood zones must now be elevated to BFE +4 feet."
+              description="Substantial improvements in tidal flood zones must be elevated to BFE +4 feet. The 180-day legacy window is now open."
               type="warning"
             />
+            {propertyData.county === 'Monmouth' && (
+              <CodeAlert
+                title="Manasquan: 10-Year Cumulative Rule Active"
+                date="Local"
+                description="Manasquan enforces a rolling 10-year cumulative substantial improvement calculation. Track all permits carefully."
+                type="urgent"
+              />
+            )}
             <CodeAlert
-              title="Ocean County Permit Fee Increase"
-              date="Mar 2026"
-              description="Building permit fees increasing 15% effective March 1."
-              type="info"
-            />
-            <CodeAlert
-              title="FEMA Risk Rating 2.0 Phase 2"
-              date="Apr 2026"
-              description="All NFIP policies will transition to new rating methodology."
+              title="FEMA Risk Rating 2.0 in Effect"
+              description="All NFIP policies now use the new rating methodology. Mitigation measures can significantly reduce premiums."
               type="info"
             />
           </div>
         </div>
         
+        {/* Property Card */}
         <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -915,25 +1593,43 @@ export default function CommandCenter() {
               Edit Details
             </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-slate-500">Zip Code</p>
-              <p className="text-sm text-white font-medium">{propertyData.zipCode || 'Not set'}</p>
-              {propertyData.municipality && <p className="text-xs text-slate-500">{propertyData.municipality}</p>}
+          
+          {propertyData.zipCode ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-slate-500">Location</p>
+                <p className="text-sm text-white font-medium">{propertyData.zipCode}</p>
+                <p className="text-xs text-slate-500">{propertyData.municipality}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Flood Zone</p>
+                <p className="text-sm text-white font-medium">{propertyData.floodZone}</p>
+                <p className="text-xs text-slate-500">BFE: {propertyData.bfe}ft</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Structure Value</p>
+                <p className="text-sm text-white font-medium">
+                  {propertyData.structureValue ? `$${propertyData.structureValue.toLocaleString()}` : 'Not set'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">10-Year Permits</p>
+                <p className="text-sm text-white font-medium">
+                  ${propertyData.permitHistory?.toLocaleString() || 0}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Address</p>
-              <p className="text-sm text-white font-medium">{propertyData.address || 'Not set'}</p>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-slate-400 mb-3">Enter your property details to get started</p>
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-lg transition-colors"
+              >
+                Add Property Details
+              </button>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Home Value</p>
-              <p className="text-sm text-white font-medium">${(propertyData.homeValue / 1000).toFixed(0)}K</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">10-Year Permits</p>
-              <p className="text-sm text-white font-medium">${(propertyData.permitHistory / 1000).toFixed(0)}K ({thresholdData.currentPct}%)</p>
-            </div>
-          </div>
+          )}
         </div>
 
         <PropertyEditModal
@@ -943,17 +1639,10 @@ export default function CommandCenter() {
           onSave={setPropertyData}
         />
 
+        {/* Checklist */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Resilience Checklist</h2>
-            <div className="flex items-center gap-4 text-xs text-slate-500">
-              <span className="flex items-center gap-1">
-                <CheckSquare className="w-3 h-3 text-emerald-400" /> I have this
-              </span>
-              <span className="flex items-center gap-1">
-                <CircleDot className="w-3 h-3 text-amber-400" /> Planning
-              </span>
-            </div>
           </div>
           
           <div className="space-y-4">
@@ -962,17 +1651,18 @@ export default function CommandCenter() {
                 key={category.id}
                 category={category}
                 selections={selections}
-                onSelectionChange={handleSelectionChange}
+                onSelectionChange={(id, value) => setSelections(prev => ({ ...prev, [id]: value }))}
               />
             ))}
           </div>
         </div>
         
+        {/* CTA */}
         <div className="bg-gradient-to-r from-cyan-900/30 to-emerald-900/30 border-2 border-cyan-500/30 rounded-2xl p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-white">Ready for your personalized report?</h3>
-              <p className="text-sm text-slate-400">Get a detailed PDF with your score, recommendations, and next steps.</p>
+              <h3 className="text-lg font-bold text-white">Get Your Compliance Report</h3>
+              <p className="text-sm text-slate-400">PDF with score, recommendations, threshold analysis, and next steps.</p>
             </div>
             <button className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl transition-colors flex items-center gap-2">
               <Download className="w-4 h-4" />
@@ -985,7 +1675,10 @@ export default function CommandCenter() {
       <footer className="border-t border-slate-800 mt-12 py-6">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <p className="text-xs text-slate-600">
-            © 2026 ShoreHomeScore • NJ REAL Rules (N.J.A.C. 7:13) • Educational purposes only
+            © 2026 ShoreHomeScore • Based on NJ REAL Rules (N.J.A.C. 7:13), FEMA regulations, and 2024 IECC
+          </p>
+          <p className="text-[10px] text-slate-700 mt-1">
+            Educational tool only. Consult licensed professionals for project-specific guidance.
           </p>
         </div>
       </footer>
