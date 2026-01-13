@@ -61,7 +61,7 @@ function AppRoutes() {
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
       
       {/* Protected routes - require login */}
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><CommandCenterPage /></ProtectedRoute>} />
       <Route path="/dashboard-2026" element={<ProtectedRoute><Dashboard2026Page /></ProtectedRoute>} />
       <Route path="/command-center" element={<ProtectedRoute><CommandCenterPage /></ProtectedRoute>} />
       <Route path="/checklist" element={<ProtectedRoute><ChecklistPage /></ProtectedRoute>} />
