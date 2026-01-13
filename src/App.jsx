@@ -8,6 +8,7 @@ import LandingPage from './pages/Landing'
 import { LoginPage, SignupPage } from './pages/Auth'
 import OnboardingPage from './pages/Onboarding'
 import DashboardPage from './pages/Dashboard'
+import Dashboard2026Page from './pages/Dashboard2026'
 import ChecklistPage from './pages/Checklist'
 import ContractorsPage from './pages/Contractors'
 import DocumentsPage from './pages/Documents'
@@ -60,6 +61,7 @@ function AppRoutes() {
       
       {/* Protected routes - require login */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/dashboard-2026" element={<ProtectedRoute><Dashboard2026Page /></ProtectedRoute>} />
       <Route path="/checklist" element={<ProtectedRoute><ChecklistPage /></ProtectedRoute>} />
       <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
