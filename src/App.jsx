@@ -50,7 +50,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes - anyone can access */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/score" element={<GuestChecklistPage />} />
+      <Route path="/score" element={<CommandCenterPage />} />
       <Route path="/contractors" element={<ContractorsPage />} />
       
       {/* Auth routes - redirect to dashboard if logged in */}
