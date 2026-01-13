@@ -8,7 +8,7 @@ import {
   DollarSign, Building, Wind, Battery, Gauge, MapPin,
   FileText, Bell, Users, CheckSquare, Square, CircleDot,
   AlertCircle, ArrowUp, Umbrella, Scale, Leaf, Radio,
-  X, Menu, LogOut, Settings, HelpCircle
+  X, Menu, LogOut, Settings, HelpCircle, Pencil
 } from 'lucide-react';
 
 // =============================================================================
@@ -16,6 +16,44 @@ import {
 // =============================================================================
 const LEGACY_WINDOW_END = new Date('2026-07-15');
 const STORM_SEASON_START = new Date('2026-06-01');
+
+// =============================================================================
+// ZIP CODE DATA
+// =============================================================================
+const ZIP_DATA = {
+  '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean' },
+  '08751': { municipality: 'Seaside Heights', county: 'Ocean' },
+  '08752': { municipality: 'Seaside Park', county: 'Ocean' },
+  '08753': { municipality: 'Toms River', county: 'Ocean' },
+  '08008': { municipality: 'Long Beach Island', county: 'Ocean' },
+  '08050': { municipality: 'Manahawkin', county: 'Ocean' },
+  '08721': { municipality: 'Bayville', county: 'Ocean' },
+  '08723': { municipality: 'Brick', county: 'Ocean' },
+  '08724': { municipality: 'Brick', county: 'Ocean' },
+  '08735': { municipality: 'Lavallette', county: 'Ocean' },
+  '08738': { municipality: 'Mantoloking', county: 'Ocean' },
+  '08740': { municipality: 'Ocean Beach', county: 'Ocean' },
+  '08741': { municipality: 'Pine Beach', county: 'Ocean' },
+  '07719': { municipality: 'Belmar', county: 'Monmouth' },
+  '07720': { municipality: 'Bradley Beach', county: 'Monmouth' },
+  '07750': { municipality: 'Monmouth Beach', county: 'Monmouth' },
+  '07756': { municipality: 'Ocean Grove', county: 'Monmouth' },
+  '07762': { municipality: 'Spring Lake', county: 'Monmouth' },
+  '08202': { municipality: 'Avalon', county: 'Cape May' },
+  '08204': { municipality: 'Cape May', county: 'Cape May' },
+  '08210': { municipality: 'Cape May Court House', county: 'Cape May' },
+  '08212': { municipality: 'Cape May Point', county: 'Cape May' },
+  '08223': { municipality: 'Sea Isle City', county: 'Cape May' },
+  '08226': { municipality: 'Ocean City', county: 'Cape May' },
+  '08243': { municipality: 'Sea Isle City', county: 'Cape May' },
+  '08247': { municipality: 'Stone Harbor', county: 'Cape May' },
+  '08248': { municipality: 'Strathmere', county: 'Cape May' },
+  '08260': { municipality: 'Wildwood', county: 'Cape May' },
+  '08401': { municipality: 'Atlantic City', county: 'Atlantic' },
+  '08402': { municipality: 'Margate', county: 'Atlantic' },
+  '08403': { municipality: 'Longport', county: 'Atlantic' },
+  '08406': { municipality: 'Ventnor', county: 'Atlantic' },
+};
 
 const CHECKLIST_CATEGORIES = [
   {
@@ -31,7 +69,6 @@ const CHECKLIST_CATEGORIES = [
         insuranceImpact: 'Up to 25% premium reduction',
         equityImpact: '+$8,000 - $15,000 home value',
         complianceNote: 'Required for FORTIFIED certification',
-        options: ['3-tab shingles', 'Architectural shingles', 'Metal roof', 'Tile roof'],
       },
       {
         id: 'roof_deck',
@@ -76,7 +113,7 @@ const CHECKLIST_CATEGORIES = [
       {
         id: 'elevation_cert',
         name: 'Elevation Certificate',
-        description: 'Official survey documenting your home\'s elevation relative to flood levels',
+        description: "Official survey documenting your home's elevation relative to flood levels",
         insuranceImpact: 'Required for accurate NFIP pricing - can save $1,000+/year',
         equityImpact: 'Required for sale in flood zones',
         complianceNote: 'Mandatory for NJ REAL compliance',
@@ -96,14 +133,6 @@ const CHECKLIST_CATEGORIES = [
         insuranceImpact: 'Major premium reduction - often 50%+',
         equityImpact: '+$30,000 - $80,000 home value',
         complianceNote: 'Required at 50% substantial improvement',
-      },
-      {
-        id: 'breakaway_walls',
-        name: 'Breakaway Walls',
-        description: 'Walls below BFE designed to break away in floods without damaging structure',
-        insuranceImpact: 'Part of compliant elevation discount',
-        equityImpact: '+$5,000 - $10,000 home value',
-        complianceNote: 'Required in V-zones below BFE',
       },
       {
         id: 'sump_pump',
@@ -145,14 +174,6 @@ const CHECKLIST_CATEGORIES = [
         equityImpact: '+$1,000 - $2,000 home value',
         complianceNote: 'Recommended for all flood zones',
       },
-      {
-        id: 'washer_dryer',
-        name: 'Washer/Dryer Elevated',
-        description: 'Laundry appliances on upper floor or elevated platform',
-        insuranceImpact: 'Reduces contents claims',
-        equityImpact: '+$500 - $1,500 home value',
-        complianceNote: 'Simple protection measure',
-      },
     ],
   },
   {
@@ -193,14 +214,6 @@ const CHECKLIST_CATEGORIES = [
         equityImpact: '+$8,000 - $15,000 home value',
         complianceNote: 'Essential for medical equipment users',
       },
-      {
-        id: 'smart_monitor',
-        name: 'Home Monitoring System',
-        description: 'Security and environmental monitoring with alerts',
-        insuranceImpact: '5-15% homeowner discount',
-        equityImpact: '+$2,000 - $5,000 home value',
-        complianceNote: 'Monitors for intrusion, fire, water, temperature',
-      },
     ],
   },
   {
@@ -216,14 +229,6 @@ const CHECKLIST_CATEGORIES = [
         insuranceImpact: 'Reduces ice dam claims in winter',
         equityImpact: '+$3,000 - $6,000 home value',
         complianceNote: '2024 IECC requirement for NJ',
-      },
-      {
-        id: 'insulation_walls',
-        name: 'Continuous Exterior Insulation',
-        description: 'Insulation wrap on exterior of walls eliminating thermal bridges',
-        insuranceImpact: 'Reduces moisture/mold claims',
-        equityImpact: '+$5,000 - $10,000 home value',
-        complianceNote: '2024 IECC requirement for major renovations',
       },
       {
         id: 'windows_energy',
@@ -264,14 +269,6 @@ const CHECKLIST_CATEGORIES = [
         insuranceImpact: 'Required by law since March 2024',
         equityImpact: 'Avoid legal liability',
         complianceNote: 'Mandatory for all sales/rentals in NJ',
-      },
-      {
-        id: 'deed_notice',
-        name: 'IRZ Deed Notice',
-        description: 'Recorded notice if property is in Inundation Risk Zone',
-        insuranceImpact: 'May affect future insurability',
-        equityImpact: 'Buyer disclosure requirement',
-        complianceNote: 'Required for IRZ properties under REAL 2026',
       },
       {
         id: 'legacy_app',
@@ -479,7 +476,6 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
             className="border-t border-slate-700"
           >
             <div className="p-4 space-y-3 bg-slate-900/50">
-              {/* Status Selector */}
               <div className="flex gap-2">
                 {statusOptions.map(opt => (
                   <button
@@ -497,7 +493,6 @@ const ChecklistItem = ({ item, status, onStatusChange }) => {
                 ))}
               </div>
               
-              {/* Impact Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -591,45 +586,201 @@ const ChecklistCategory = ({ category, selections, onSelectionChange }) => {
 };
 
 // =============================================================================
+// PROPERTY EDIT MODAL
+// =============================================================================
+const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
+  const [formData, setFormData] = useState(propertyData);
+  
+  useEffect(() => {
+    setFormData(propertyData);
+  }, [propertyData, isOpen]);
+  
+  const handleZipChange = (zip) => {
+    const cleaned = zip.replace(/\D/g, '').slice(0, 5);
+    const zipInfo = ZIP_DATA[cleaned] || { municipality: '', county: '' };
+    setFormData(prev => ({
+      ...prev,
+      zipCode: cleaned,
+      municipality: zipInfo.municipality || prev.municipality,
+      county: zipInfo.county || prev.county,
+    }));
+  };
+  
+  const handleSave = () => {
+    onSave(formData);
+    onClose();
+  };
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-slate-800 border-2 border-slate-600 rounded-2xl p-6 w-full max-w-md"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-white">Edit Property Details</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Zip Code <span className="text-cyan-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.zipCode}
+              onChange={(e) => handleZipChange(e.target.value)}
+              placeholder="e.g., 08742"
+              className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg font-mono"
+              maxLength={5}
+            />
+            <p className="text-xs text-slate-500 mt-1">Used for local code updates & insurance estimates</p>
+          </div>
+          
+          {formData.municipality && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Municipality</label>
+                <p className="text-sm text-slate-300">{formData.municipality}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">County</label>
+                <p className="text-sm text-slate-300">{formData.county}</p>
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Address <span className="text-slate-500 text-xs">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="e.g., 123 Ocean Ave"
+              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Estimated Home Value</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+              <input
+                type="text"
+                value={formData.homeValue ? formData.homeValue.toLocaleString() : ''}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                  setFormData(prev => ({ ...prev, homeValue: value, structureValue: Math.round(value * 0.7) }));
+                }}
+                placeholder="500,000"
+                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">10-Year Permit History</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+              <input
+                type="text"
+                value={formData.permitHistory ? formData.permitHistory.toLocaleString() : ''}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                  setFormData(prev => ({ ...prev, permitHistory: value }));
+                }}
+                placeholder="0"
+                className="w-full pl-8 pr-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl transition-colors">
+            Save Changes
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 export default function CommandCenter() {
   const navigate = useNavigate();
   
-  // State
-  const [selections, setSelections] = useState({});
-  const [propertyData, setPropertyData] = useState({
-    address: '301 W 6th St',
-    zipCode: '08742',
-    municipality: 'Point Pleasant Beach',
-    county: 'Ocean',
-    homeValue: 650000,
-    structureValue: 455000,
-    permitHistory: 91000, // 10-year total
+  const [selections, setSelections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shorehomescore_selections');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
   });
   
-  // Calculations
+  const [propertyData, setPropertyData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shorehomescore_property');
+      return saved ? JSON.parse(saved) : {
+        address: '',
+        zipCode: '08742',
+        municipality: 'Point Pleasant Beach',
+        county: 'Ocean',
+        homeValue: 500000,
+        structureValue: 350000,
+        permitHistory: 0,
+      };
+    } catch {
+      return {
+        address: '',
+        zipCode: '08742',
+        municipality: 'Point Pleasant Beach',
+        county: 'Ocean',
+        homeValue: 500000,
+        structureValue: 350000,
+        permitHistory: 0,
+      };
+    }
+  });
+  
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  useEffect(() => {
+    localStorage.setItem('shorehomescore_selections', JSON.stringify(selections));
+  }, [selections]);
+  
+  useEffect(() => {
+    localStorage.setItem('shorehomescore_property', JSON.stringify(propertyData));
+  }, [propertyData]);
+  
   const score = useMemo(() => {
     let points = 0;
-    const maxPoints = 100;
-    
     Object.entries(selections).forEach(([id, status]) => {
       if (status === 'have') points += 4;
       else if (status === 'planning') points += 1;
     });
-    
-    return Math.min(points, maxPoints);
+    return Math.min(points, 100);
   }, [selections]);
   
   const thresholdData = useMemo(() => {
     const fortyPct = propertyData.structureValue * 0.4;
-    const fiftyPct = propertyData.structureValue * 0.5;
     const currentPct = (propertyData.permitHistory / propertyData.structureValue) * 100;
     const remaining = fortyPct - propertyData.permitHistory;
-    
     return {
       fortyPct,
-      fiftyPct,
       currentPct: currentPct.toFixed(1),
       remaining: Math.max(remaining, 0),
       inYellow: currentPct >= 40 && currentPct < 50,
@@ -646,7 +797,6 @@ export default function CommandCenter() {
     if (selections.flood_vents === 'have') annual += 500;
     if (selections.elevated_foundation === 'have') annual += 2000;
     if (selections.water_shutoff === 'have') annual += 200;
-    if (selections.smart_monitor === 'have') annual += 150;
     return annual;
   }, [selections]);
   
@@ -656,7 +806,6 @@ export default function CommandCenter() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -669,7 +818,6 @@ export default function CommandCenter() {
                 <p className="text-xs text-slate-500">NJ Coastal Resilience</p>
               </div>
             </div>
-            
             <div className="flex items-center gap-4">
               <button className="p-2 text-slate-400 hover:text-white transition-colors">
                 <Bell className="w-5 h-5" />
@@ -683,9 +831,7 @@ export default function CommandCenter() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Top Stats Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Score Gauge */}
           <div className="lg:col-span-4 bg-slate-800 border-2 border-slate-700 rounded-2xl p-6 flex flex-col items-center">
             <ScoreGauge score={score} />
             <div className="mt-4 text-center">
@@ -695,7 +841,6 @@ export default function CommandCenter() {
             </div>
           </div>
           
-          {/* Countdowns & Key Stats */}
           <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <CountdownCard
               title="Legacy Window"
@@ -729,7 +874,6 @@ export default function CommandCenter() {
           </div>
         </div>
         
-        {/* Code Updates */}
         <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-4 h-4 text-cyan-400" />
@@ -739,41 +883,47 @@ export default function CommandCenter() {
             <CodeAlert
               title="NJ REAL 2026 CAFE Standard Now in Effect"
               date="Jan 2026"
-              description="New construction and substantial improvements in tidal flood zones must now be elevated to BFE +4 feet. The original +5ft proposal was reduced to +4ft in the final rule."
+              description="New construction and substantial improvements in tidal flood zones must now be elevated to BFE +4 feet."
               type="warning"
             />
             <CodeAlert
               title="Ocean County Permit Fee Increase"
               date="Mar 2026"
-              description="Building permit fees increasing 15% effective March 1. Consider submitting applications before deadline for current rates."
+              description="Building permit fees increasing 15% effective March 1."
               type="info"
             />
             <CodeAlert
               title="FEMA Risk Rating 2.0 Phase 2"
               date="Apr 2026"
-              description="All NFIP policies will transition to new rating methodology. Homes with mitigation measures may see reduced premiums."
+              description="All NFIP policies will transition to new rating methodology."
               type="info"
             />
           </div>
         </div>
         
-        {/* Property Summary */}
         <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-cyan-400" />
               <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Your Property</h2>
             </div>
-            <button className="text-xs text-cyan-400 hover:text-cyan-300">Edit Details</button>
+            <button 
+              onClick={() => setShowEditModal(true)}
+              className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 rounded-lg border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+              Edit Details
+            </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-slate-500">Address</p>
-              <p className="text-sm text-white font-medium">{propertyData.address}</p>
+              <p className="text-xs text-slate-500">Zip Code</p>
+              <p className="text-sm text-white font-medium">{propertyData.zipCode || 'Not set'}</p>
+              {propertyData.municipality && <p className="text-xs text-slate-500">{propertyData.municipality}</p>}
             </div>
             <div>
-              <p className="text-xs text-slate-500">Municipality</p>
-              <p className="text-sm text-white font-medium">{propertyData.municipality}</p>
+              <p className="text-xs text-slate-500">Address</p>
+              <p className="text-sm text-white font-medium">{propertyData.address || 'Not set'}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Home Value</p>
@@ -786,7 +936,13 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* Checklist Section */}
+        <PropertyEditModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          propertyData={propertyData}
+          onSave={setPropertyData}
+        />
+
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Resilience Checklist</h2>
@@ -812,7 +968,6 @@ export default function CommandCenter() {
           </div>
         </div>
         
-        {/* Bottom CTA */}
         <div className="bg-gradient-to-r from-cyan-900/30 to-emerald-900/30 border-2 border-cyan-500/30 rounded-2xl p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
@@ -827,7 +982,6 @@ export default function CommandCenter() {
         </div>
       </main>
       
-      {/* Footer */}
       <footer className="border-t border-slate-800 mt-12 py-6">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <p className="text-xs text-slate-600">
