@@ -1466,22 +1466,159 @@ export default function CommandCenter() {
     }
   }, []);
   
-  // Calculate score
+  // Calculate score - comprehensive scoring system
   const score = useMemo(() => {
     let points = 0;
-    CHECKLIST_CATEGORIES.forEach(cat => {
-      cat.items.forEach(item => {
-        const val = selections[item.id];
-        if (val === true) points += 3;
-        else if (item.type === 'select' && val) {
-          const opt = item.options?.find(o => o.value === val);
-          points += opt?.score || 2;
-        }
-        else if (item.type === 'number' && val) points += 2;
-      });
-    });
+    
+    // === WIND DEFENSE (max ~25 points) ===
+    // Roof type (0-5 based on ROOF_TYPES resilienceScore)
+    if (selections.roof_type) {
+      const roofScore = ROOF_TYPES[selections.roof_type]?.resilienceScore || 0;
+      points += roofScore;
+    }
+    
+    // Roof age (0-5 points, newer = better)
+    if (selections.roof_age !== undefined && selections.roof_age !== null) {
+      const age = Number(selections.roof_age);
+      if (age <= 5) points += 5;        // Brand new roof
+      else if (age <= 10) points += 4;  // Good condition
+      else if (age <= 15) points += 3;  // Acceptable
+      else if (age <= 20) points += 1;  // ACV penalties likely
+      else points += 0;                  // May face coverage issues
+    }
+    
+    // Roof deck sealed (+4)
+    if (selections.roof_deck) points += 4;
+    
+    // Ring-shank fasteners (+3)
+    if (selections.roof_fasteners) points += 3;
+    
+    // Windows/shutters (0-5 based on selection)
+    if (selections.windows_impact) {
+      const windowScores = { none: 0, film: 1, plywood: 1, accordion: 3, impact: 4, both: 5 };
+      points += windowScores[selections.windows_impact] || 0;
+    }
+    
+    // Wind-rated garage door (+3)
+    if (selections.garage_door) points += 3;
+    
+    // === FLOOD ARMOR (max ~25 points) ===
+    // Elevation certificate (+4) - critical document
+    if (selections.elevation_cert) points += 4;
+    
+    // Current elevation vs BFE (0-5)
+    if (selections.current_elevation) {
+      const elev = Number(selections.current_elevation);
+      const bfe = propertyData.bfe || 9;
+      const diff = elev - bfe;
+      if (diff >= 4) points += 5;       // At or above CAFE
+      else if (diff >= 2) points += 4;  // Good buffer
+      else if (diff >= 0) points += 3;  // At BFE
+      else if (diff >= -2) points += 1; // Below but close
+      else points += 0;                  // Significantly below
+    }
+    
+    // Foundation type (0-4)
+    if (selections.foundation_type) {
+      const foundationScores = { slab: 0, crawl: 1, basement: 0, piers: 3, piles: 4 };
+      points += foundationScores[selections.foundation_type] || 0;
+    }
+    
+    // Flood vents (0-4 based on compliance)
+    if (selections.flood_vents > 0) {
+      const sqft = selections.enclosed_sqft || 0;
+      const required = Math.ceil(sqft / 200);
+      const vents = selections.flood_vents;
+      if (vents >= required) points += 4;      // Fully compliant
+      else if (vents >= required * 0.5) points += 2;  // Partial
+      else points += 1;                         // Some venting
+    }
+    
+    // Breakaway walls (+3)
+    if (selections.breakaway_walls) points += 3;
+    
+    // Sump pump with backup (+3)
+    if (selections.sump_pump) points += 3;
+    
+    // === ELEVATED SYSTEMS (max ~15 points) ===
+    // HVAC location (0-5)
+    if (selections.hvac_location) {
+      const hvacScores = { ground: 0, elevated_partial: 2, elevated_full: 4, roof: 5 };
+      points += hvacScores[selections.hvac_location] || 0;
+    }
+    
+    // Electrical panel (0-4)
+    if (selections.electrical_panel) {
+      const elecScores = { basement: 0, ground: 1, elevated: 4 };
+      points += elecScores[selections.electrical_panel] || 0;
+    }
+    
+    // Water heater elevated (+3)
+    if (selections.water_heater) points += 3;
+    
+    // Washer/dryer elevated (+2)
+    if (selections.washer_dryer) points += 2;
+    
+    // === SMART PROTECTION (max ~15 points) ===
+    // Smart water shutoff (+4)
+    if (selections.water_shutoff) points += 4;
+    
+    // Leak sensors (+2)
+    if (selections.leak_sensors) points += 2;
+    
+    // Backup power (0-5)
+    if (selections.backup_power) {
+      const powerScores = { none: 0, portable: 1, standby: 3, battery: 4, solar_battery: 5 };
+      points += powerScores[selections.backup_power] || 0;
+    }
+    
+    // Monitoring system (+3)
+    if (selections.monitoring) points += 3;
+    
+    // === ENERGY & ENVELOPE (max ~10 points) ===
+    // Attic insulation (0-4)
+    if (selections.attic_insulation) {
+      const insulScores = { unknown: 0, r30: 1, r49: 2, r60: 4 };
+      points += insulScores[selections.attic_insulation] || 0;
+    }
+    
+    // Window U-value (0-4)
+    if (selections.window_uvalue) {
+      const windowScores = { single: 0, double_old: 1, double_new: 2, code: 4 };
+      points += windowScores[selections.window_uvalue] || 0;
+    }
+    
+    // Air sealing (+2)
+    if (selections.air_sealing) points += 2;
+    
+    // === SITE & LOT (max ~8 points) ===
+    // Impervious cover (0-4)
+    if (selections.impervious_cover) {
+      const coverScores = { low: 4, moderate: 2, high: 1, maxed: 0 };
+      points += coverScores[selections.impervious_cover] || 0;
+    }
+    
+    // Permeable surfaces (+2)
+    if (selections.permeable_surfaces) points += 2;
+    
+    // Rain garden (+2)
+    if (selections.rain_garden) points += 2;
+    
+    // === DOCUMENTATION (max ~10 points) ===
+    // Permit history known (+3)
+    if (selections.permit_history) points += 3;
+    
+    // Flood disclosure ready (+3)
+    if (selections.flood_disclosure) points += 3;
+    
+    // IRZ status known (not in IRZ = +2)
+    if (selections.irz_status === 'no') points += 2;
+    
+    // Legacy application (+2)
+    if (selections.legacy_app) points += 2;
+    
     return Math.min(points, 100);
-  }, [selections]);
+  }, [selections, propertyData.bfe]);
   
   // Track score changes and show animation
   useEffect(() => {
@@ -1493,19 +1630,53 @@ export default function CommandCenter() {
     setPrevScore(score);
   }, [score]);
   
-  // Insurance savings estimate
+  // Insurance savings estimate - comprehensive
   const insuranceSavings = useMemo(() => {
     let annual = 0;
-    if (selections.roof_type === 'metal_standing') annual += 1200;
-    else if (selections.roof_type === 'metal_screwdown') annual += 800;
-    else if (selections.roof_type === 'architectural') annual += 400;
-    if (selections.roof_deck) annual += 500;
-    if (selections.windows_impact === 'impact' || selections.windows_impact === 'both') annual += 600;
-    else if (selections.windows_impact === 'accordion') annual += 400;
-    if (selections.elevation_cert) annual += 800;
-    if (selections.flood_vents > 0) annual += 400;
-    if (selections.water_shutoff) annual += 200;
-    if (selections.monitoring) annual += 150;
+    
+    // Roof type
+    if (selections.roof_type === 'metal_standing') annual += 1500;
+    else if (selections.roof_type === 'metal_screwdown') annual += 1000;
+    else if (selections.roof_type === 'architectural') annual += 500;
+    else if (selections.roof_type === 'tile') annual += 800;
+    
+    // Roof age (penalty avoided)
+    if (selections.roof_age !== undefined) {
+      const age = Number(selections.roof_age);
+      if (age <= 10) annual += 400; // No ACV penalty
+    }
+    
+    // Roof deck
+    if (selections.roof_deck) annual += 600;
+    
+    // Windows/shutters
+    if (selections.windows_impact === 'impact' || selections.windows_impact === 'both') annual += 800;
+    else if (selections.windows_impact === 'accordion') annual += 500;
+    
+    // Garage door
+    if (selections.garage_door) annual += 200;
+    
+    // Elevation certificate
+    if (selections.elevation_cert) annual += 1000;
+    
+    // Flood vents
+    if (selections.flood_vents > 0) annual += 500;
+    
+    // Elevated foundation
+    if (selections.foundation_type === 'piles') annual += 2500;
+    else if (selections.foundation_type === 'piers') annual += 1500;
+    
+    // Smart water shutoff
+    if (selections.water_shutoff) annual += 250;
+    
+    // Monitoring system
+    if (selections.monitoring) annual += 200;
+    
+    // Backup power (reduces secondary damage claims)
+    if (selections.backup_power === 'standby' || selections.backup_power === 'battery' || selections.backup_power === 'solar_battery') {
+      annual += 150;
+    }
+    
     return annual;
   }, [selections]);
   
@@ -1561,6 +1732,14 @@ export default function CommandCenter() {
                   )}
                 </AnimatePresence>
               </div>
+              
+              {/* Insurance Savings in Header */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-900/30 rounded-full border border-emerald-500/30">
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-bold text-emerald-400">${insuranceSavings.toLocaleString()}</span>
+                <span className="text-xs text-emerald-500">/yr</span>
+              </div>
+              
               <button className="p-2 text-slate-400 hover:text-white"><Bell className="w-5 h-5" /></button>
               <button className="p-2 text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
             </div>
