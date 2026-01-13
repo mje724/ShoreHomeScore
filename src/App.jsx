@@ -49,7 +49,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes - anyone can access */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<CommandCenterPage />} />
       <Route path="/score" element={<CommandCenterPage />} />
       <Route path="/contractors" element={<ContractorsPage />} />
       
