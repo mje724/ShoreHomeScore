@@ -1,23 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home, Shield, Droplets, Wind, Zap,
+  Home, Shield, Droplets, Wind,
   AlertTriangle, CheckCircle, Clock, TrendingUp, Download,
-  ChevronDown, ChevronRight, Info,
-  DollarSign, MapPin, Bell, X, HelpCircle,
-  ArrowRight, Phone, FileText, Waves, Thermometer,
-  CheckSquare, AlertCircle, ArrowUp, Search, 
-  Calendar, Users, ExternalLink, Star, Target
+  ChevronDown, ChevronRight,
+  DollarSign, MapPin, X, HelpCircle,
+  ArrowRight, Phone, Waves,
+  Search, Star, Sparkles, PartyPopper, Gift, Check
 } from 'lucide-react';
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 const CAFE_ELEVATION = 4;
-const LAND_VALUE_PERCENT = 0.35;
-const LEGACY_WINDOW_END = new Date('2026-07-15');
 
-// NJ Shore ZIP code data
+// NJ Shore ZIP code data - what we KNOW
 const ZIP_DATA = {
   '08742': { municipality: 'Point Pleasant Beach', county: 'Ocean', bfe: 9, floodZone: 'AE', pricePerSqft: 450 },
   '08751': { municipality: 'Seaside Heights', county: 'Ocean', bfe: 10, floodZone: 'VE', pricePerSqft: 380 },
@@ -34,145 +31,99 @@ const ZIP_DATA = {
   '08721': { municipality: 'Bayville', county: 'Ocean', bfe: 6, floodZone: 'AE', pricePerSqft: 380 },
   '08005': { municipality: 'Barnegat', county: 'Ocean', bfe: 6, floodZone: 'AE', pricePerSqft: 320 },
   '08731': { municipality: 'Forked River', county: 'Ocean', bfe: 7, floodZone: 'AE', pricePerSqft: 370 },
-  '08087': { municipality: 'Tuckerton', county: 'Ocean', bfe: 7, floodZone: 'AE', pricePerSqft: 340 },
-  '07740': { municipality: 'Long Branch', county: 'Monmouth', bfe: 9, floodZone: 'AE', pricePerSqft: 480 },
-  '07760': { municipality: 'Rumson', county: 'Monmouth', bfe: 8, floodZone: 'AE', pricePerSqft: 850 },
 };
 
 // =============================================================================
-// HELPER COMPONENTS
+// CELEBRATION COMPONENT
 // =============================================================================
-
-// Weather Alert Banner - only shows when there are alerts
-const WeatherBanner = ({ alerts }) => {
-  if (!alerts || alerts.length === 0) return null;
-  
-  const severe = alerts.find(a => a.severity === 'Severe' || a.severity === 'Extreme');
-  if (!severe) return null;
+const Confetti = ({ show }) => {
+  if (!show) return null;
   
   return (
-    <motion.div 
-      initial={{ y: -100 }} 
-      animate={{ y: 0 }}
-      className="bg-red-600 text-white px-4 py-3"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
     >
-      <div className="max-w-4xl mx-auto flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-        <div className="flex-1">
-          <span className="font-bold">{severe.event}:</span> {severe.headline}
-        </div>
-      </div>
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: [0, 1.2, 1] }}
+        transition={{ duration: 0.5 }}
+        className="text-6xl"
+      >
+        🎉
+      </motion.div>
     </motion.div>
   );
 };
 
-// Simple score display
-const ScoreDisplay = ({ score, label }) => {
-  const getColor = () => {
-    if (score >= 70) return { ring: 'border-emerald-500', text: 'text-emerald-400', bg: 'bg-emerald-500' };
-    if (score >= 40) return { ring: 'border-amber-500', text: 'text-amber-400', bg: 'bg-amber-500' };
-    return { ring: 'border-red-500', text: 'text-red-400', bg: 'bg-red-500' };
-  };
-  const colors = getColor();
+// =============================================================================
+// ADDRESS INPUT WITH AUTOCOMPLETE
+// =============================================================================
+const AddressInput = ({ value, onChange, onSelect }) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
-  return (
-    <div className="text-center">
-      <div className={`w-32 h-32 mx-auto rounded-full border-8 ${colors.ring} flex items-center justify-center bg-slate-900`}>
-        <span className="text-4xl font-bold text-white">{score}</span>
-      </div>
-      <div className={`mt-3 inline-block px-4 py-1 rounded-full text-sm font-bold ${colors.bg} text-white`}>
-        {label}
-      </div>
-    </div>
-  );
-};
-
-// Action item component
-const ActionItem = ({ number, title, description, impact, status, onClick }) => {
-  const statusStyles = {
-    complete: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400',
-    priority: 'bg-amber-500/20 border-amber-500/50 text-amber-400',
-    optional: 'bg-slate-700/50 border-slate-600 text-slate-400',
-  };
-  
-  return (
-    <motion.button
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-      onClick={onClick}
-      className={`w-full text-left p-4 rounded-xl border-2 ${statusStyles[status]} transition-all`}
-    >
-      <div className="flex items-start gap-4">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-          status === 'complete' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'
-        }`}>
-          {status === 'complete' ? <CheckCircle className="w-5 h-5" /> : number}
-        </div>
-        <div className="flex-1">
-          <h4 className="font-bold text-white text-base">{title}</h4>
-          <p className="text-sm text-slate-400 mt-1">{description}</p>
-          {impact && (
-            <p className="text-sm mt-2 font-medium text-emerald-400">{impact}</p>
-          )}
-        </div>
-        <ChevronRight className="w-5 h-5 text-slate-500" />
-      </div>
-    </motion.button>
-  );
-};
-
-// Info card for key metrics
-const MetricCard = ({ icon: Icon, label, value, subtext, color = 'cyan' }) => {
-  const colors = {
-    cyan: 'text-cyan-400 bg-cyan-500/20',
-    emerald: 'text-emerald-400 bg-emerald-500/20',
-    amber: 'text-amber-400 bg-amber-500/20',
-    red: 'text-red-400 bg-red-500/20',
+  // Simple NJ address suggestions based on input
+  const handleInputChange = (inputValue) => {
+    onChange(inputValue);
+    
+    // Show ZIP-based suggestions when typing
+    if (inputValue.length > 2) {
+      const matches = Object.entries(ZIP_DATA)
+        .filter(([zip, data]) => 
+          data.municipality.toLowerCase().includes(inputValue.toLowerCase()) ||
+          zip.includes(inputValue)
+        )
+        .slice(0, 5)
+        .map(([zip, data]) => ({
+          display: `${data.municipality}, NJ ${zip}`,
+          zip,
+          municipality: data.municipality
+        }));
+      setSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
   };
   
   return (
-    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`p-1.5 rounded-lg ${colors[color]}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <span className="text-xs text-slate-400 uppercase tracking-wider">{label}</span>
+    <div className="relative">
+      <div className="relative">
+        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          placeholder="Enter your address or town..."
+          className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-800 text-lg focus:border-cyan-500 focus:outline-none transition-all shadow-sm"
+        />
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      {subtext && <p className="text-xs text-slate-500 mt-1">{subtext}</p>}
-    </div>
-  );
-};
-
-// Expandable section
-const ExpandableSection = ({ title, icon: Icon, children, defaultOpen = false }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  
-  return (
-    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-slate-700 rounded-lg">
-            <Icon className="w-5 h-5 text-cyan-400" />
-          </div>
-          <span className="font-bold text-white">{title}</span>
-        </div>
-        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      
       <AnimatePresence>
-        {isOpen && (
+        {showSuggestions && (
           <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
-            exit={{ height: 0 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50"
           >
-            <div className="p-4 pt-0 border-t border-slate-700">
-              {children}
-            </div>
+            {suggestions.map((suggestion, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  onSelect(suggestion);
+                  setShowSuggestions(false);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-cyan-50 transition-colors flex items-center gap-3 border-b border-slate-100 last:border-0"
+              >
+                <MapPin className="w-4 h-4 text-cyan-500" />
+                <span className="text-slate-700">{suggestion.display}</span>
+              </button>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -180,753 +131,754 @@ const ExpandableSection = ({ title, icon: Icon, children, defaultOpen = false })
   );
 };
 
-// Quick checklist toggle
-const QuickToggle = ({ label, value, onChange, description }) => (
-  <button
-    onClick={() => onChange(!value)}
-    className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
-      value 
-        ? 'bg-emerald-500/20 border-emerald-500/50' 
-        : 'bg-slate-800/50 border-slate-600 hover:border-slate-500'
-    }`}
-  >
-    <div className="flex items-center gap-3">
-      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-        value ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'
-      }`}>
-        {value && <CheckCircle className="w-4 h-4 text-white" />}
-      </div>
-      <div className="flex-1">
-        <p className={`font-medium ${value ? 'text-emerald-400' : 'text-slate-300'}`}>{label}</p>
-        {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+// =============================================================================
+// PROGRESS RING
+// =============================================================================
+const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+  
+  const getColor = () => {
+    if (progress >= 70) return '#10b981';
+    if (progress >= 40) return '#f59e0b';
+    return '#06b6d4';
+  };
+  
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#1e293b"
+          strokeWidth={strokeWidth}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={getColor()}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: "easeOut" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-3xl font-bold text-white">{Math.round(progress)}%</span>
       </div>
     </div>
-  </button>
+  );
+};
+
+// =============================================================================
+// QUESTION CARD - Friendly toggle
+// =============================================================================
+const QuestionCard = ({ question, description, value, onChange, impact, icon: Icon }) => {
+  const isAnswered = value !== null && value !== undefined;
+  const isYes = value === true;
+  
+  return (
+    <motion.div
+      layout
+      className={`rounded-2xl border-2 p-4 transition-all ${
+        isAnswered 
+          ? isYes 
+            ? 'bg-emerald-500/10 border-emerald-500/50' 
+            : 'bg-slate-800/50 border-slate-600'
+          : 'bg-slate-800/30 border-slate-700 hover:border-slate-500'
+      }`}
+    >
+      <div className="flex items-start gap-4">
+        {Icon && (
+          <div className={`p-2 rounded-xl ${isYes ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+            <Icon className={`w-5 h-5 ${isYes ? 'text-emerald-400' : 'text-slate-400'}`} />
+          </div>
+        )}
+        <div className="flex-1">
+          <h4 className="font-semibold text-white text-base">{question}</h4>
+          {description && (
+            <p className="text-sm text-slate-400 mt-1">{description}</p>
+          )}
+          {impact && isYes && (
+            <motion.p 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="text-sm text-emerald-400 mt-2 flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              {impact}
+            </motion.p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onChange(true)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              isYes 
+                ? 'bg-emerald-500 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => onChange(false)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              value === false 
+                ? 'bg-slate-600 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// =============================================================================
+// INSIGHT CARD - Only shows when we have data
+// =============================================================================
+const InsightCard = ({ icon: Icon, title, value, subtitle, color = 'cyan', available = true }) => {
+  if (!available) return null;
+  
+  const colors = {
+    cyan: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30',
+    emerald: 'from-emerald-500/20 to-green-500/20 border-emerald-500/30',
+    amber: 'from-amber-500/20 to-orange-500/20 border-amber-500/30',
+    red: 'from-red-500/20 to-rose-500/20 border-red-500/30',
+  };
+  
+  const iconColors = {
+    cyan: 'text-cyan-400',
+    emerald: 'text-emerald-400',
+    amber: 'text-amber-400',
+    red: 'text-red-400',
+  };
+  
+  return (
+    <div className={`bg-gradient-to-br ${colors[color]} border rounded-2xl p-4`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`w-5 h-5 ${iconColors[color]}`} />
+        <span className="text-sm text-slate-400">{title}</span>
+      </div>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+    </div>
+  );
+};
+
+// =============================================================================
+// SAVINGS ITEM - Shows potential vs actual
+// =============================================================================
+const SavingsItem = ({ label, amount, achieved, description }) => (
+  <div className={`flex items-center justify-between p-3 rounded-xl ${
+    achieved ? 'bg-emerald-500/10' : 'bg-slate-800/50'
+  }`}>
+    <div className="flex items-center gap-3">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+        achieved ? 'bg-emerald-500' : 'bg-slate-700'
+      }`}>
+        {achieved ? (
+          <Check className="w-4 h-4 text-white" />
+        ) : (
+          <div className="w-2 h-2 bg-slate-500 rounded-full" />
+        )}
+      </div>
+      <div>
+        <p className={achieved ? 'text-emerald-400 font-medium' : 'text-slate-400'}>{label}</p>
+        {description && <p className="text-xs text-slate-500">{description}</p>}
+      </div>
+    </div>
+    <span className={`font-bold ${achieved ? 'text-emerald-400' : 'text-slate-500'}`}>
+      {achieved ? `+$${amount}` : `$${amount}`}
+    </span>
+  </div>
 );
 
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 export default function CommandCenter() {
-  // Core state
-  const [currentView, setCurrentView] = useState('entry'); // entry, results
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  // ===== STATE =====
+  const [addressInput, setAddressInput] = useState('');
+  const [showConfetti, setShowConfetti] = useState(false);
   
-  // Property data
-  const [propertyData, setPropertyData] = useState(() => {
+  // Property data from lookup
+  const [property, setProperty] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shs_property_v3');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.zipCode) return { ...parsed, view: 'results' };
-        return parsed;
-      }
+      const saved = localStorage.getItem('shs_property_v4');
+      return saved ? JSON.parse(saved) : null;
     }
-    return { address: '', zipCode: '' };
+    return null;
   });
   
-  // Checklist answers
+  // User answers - only what they've actually told us
   const [answers, setAnswers] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shs_answers_v3');
+      const saved = localStorage.getItem('shs_answers_v4');
       return saved ? JSON.parse(saved) : {};
     }
     return {};
   });
   
-  // API data
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [femaData, setFemaData] = useState(null);
-  const [weatherAlerts, setWeatherAlerts] = useState([]);
-  const [claimsData, setClaimsData] = useState(null);
   
-  // Save to localStorage
+  // ===== PERSISTENCE =====
   useEffect(() => {
-    localStorage.setItem('shs_property_v3', JSON.stringify(propertyData));
-  }, [propertyData]);
+    if (property) {
+      localStorage.setItem('shs_property_v4', JSON.stringify(property));
+    }
+  }, [property]);
   
   useEffect(() => {
-    localStorage.setItem('shs_answers_v3', JSON.stringify(answers));
+    localStorage.setItem('shs_answers_v4', JSON.stringify(answers));
   }, [answers]);
   
-  // Auto-show results if we have data
-  useEffect(() => {
-    if (propertyData.zipCode && propertyData.floodZone) {
-      setCurrentView('results');
-    }
-  }, []);
+  // ===== HANDLERS =====
+  const handleAddressSelect = (suggestion) => {
+    setAddressInput(suggestion.display);
+    lookupAddress(suggestion.municipality, suggestion.zip);
+  };
   
-  // Fetch weather when we have coordinates
-  useEffect(() => {
-    if (propertyData.coordinates) {
-      fetch(`/api/weather-alerts?lat=${propertyData.coordinates.lat}&lng=${propertyData.coordinates.lng}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.alerts) setWeatherAlerts(data.alerts);
-        })
-        .catch(() => {});
-    }
-  }, [propertyData.coordinates]);
-
-  // Look up property data
-  const lookupProperty = async () => {
-    if (!propertyData.address || !propertyData.zipCode) {
-      setError('Please enter your address and zip code');
-      return;
-    }
-    
+  const lookupAddress = async (address, zip) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Call FEMA API
+      // Try FEMA API first
       const response = await fetch(
-        `/api/fema-lookup?address=${encodeURIComponent(propertyData.address)}&zipCode=${encodeURIComponent(propertyData.zipCode)}`
+        `/api/fema-lookup?address=${encodeURIComponent(address)}&zipCode=${encodeURIComponent(zip)}`
       );
-      const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not find that address');
+      const zipInfo = ZIP_DATA[zip] || {};
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFemaData(data);
+        setProperty({
+          address: address,
+          zipCode: zip,
+          municipality: zipInfo.municipality || address,
+          county: zipInfo.county || '',
+          floodZone: data.floodZone || zipInfo.floodZone,
+          bfe: data.bfe || zipInfo.bfe,
+          coordinates: data.coordinates,
+          femaVerified: true,
+          claims: data.claims,
+        });
+      } else {
+        // Fall back to ZIP data
+        setProperty({
+          address: address,
+          zipCode: zip,
+          municipality: zipInfo.municipality || address,
+          county: zipInfo.county || '',
+          floodZone: zipInfo.floodZone || null,
+          bfe: zipInfo.bfe || null,
+          femaVerified: false,
+        });
       }
-      
-      // Get ZIP data for additional info
-      const zipInfo = ZIP_DATA[propertyData.zipCode] || {};
-      
-      // Update property data
-      setPropertyData(prev => ({
-        ...prev,
-        floodZone: data.floodZone || zipInfo.floodZone || 'AE',
-        bfe: data.bfe || zipInfo.bfe || 9,
-        municipality: zipInfo.municipality || '',
-        county: zipInfo.county || '',
-        coordinates: data.coordinates,
-        femaVerified: true,
-        pricePerSqft: zipInfo.pricePerSqft || 400,
-      }));
-      
-      setFemaData(data);
-      
-      if (data.claims) {
-        setClaimsData(data.claims);
-      }
-      
-      setCurrentView('results');
-      
     } catch (err) {
-      setError(err.message || 'Lookup failed. Please try again.');
+      // Fall back to ZIP data on error
+      const zipInfo = ZIP_DATA[zip] || {};
+      setProperty({
+        address: address,
+        zipCode: zip,
+        municipality: zipInfo.municipality || address,
+        county: zipInfo.county || '',
+        floodZone: zipInfo.floodZone || null,
+        bfe: zipInfo.bfe || null,
+        femaVerified: false,
+      });
     }
     
     setIsLoading(false);
   };
-
-  // Calculate resilience score
-  const score = useMemo(() => {
-    let points = 0;
-    const maxPoints = 100;
+  
+  const handleManualLookup = () => {
+    // Extract zip from input if present
+    const zipMatch = addressInput.match(/\b\d{5}\b/);
+    const zip = zipMatch ? zipMatch[0] : '';
     
-    // Elevation Certificate (15 points)
-    if (answers.hasElevationCert) points += 15;
-    
-    // Elevation above BFE (20 points)
-    if (answers.feetAboveBFE >= 4) points += 20;
-    else if (answers.feetAboveBFE >= 2) points += 15;
-    else if (answers.feetAboveBFE >= 0) points += 10;
-    else if (answers.feetAboveBFE !== undefined) points += 5;
-    
-    // Foundation type (10 points)
-    if (answers.foundationType === 'piles') points += 10;
-    else if (answers.foundationType === 'piers') points += 8;
-    else if (answers.foundationType === 'crawl') points += 5;
-    
-    // Flood vents (10 points)
-    if (answers.hasFloodVents) points += 10;
-    
-    // Roof protection (15 points)
-    if (answers.roofType === 'metal') points += 10;
-    else if (answers.roofType === 'architectural') points += 6;
-    else if (answers.roofType === 'standard') points += 3;
-    
-    if (answers.hasRoofDeck) points += 5;
-    
-    // Window protection (10 points)
-    if (answers.windowProtection === 'impact') points += 10;
-    else if (answers.windowProtection === 'shutters') points += 7;
-    else if (answers.windowProtection === 'plywood') points += 3;
-    
-    // Smart protection (10 points)
-    if (answers.hasWaterShutoff) points += 5;
-    if (answers.hasBackupPower) points += 5;
-    
-    // Bonus for documentation (10 points)
-    if (answers.knowsPermitHistory) points += 5;
-    if (answers.hasFloodInsurance) points += 5;
-    
-    return Math.min(points, maxPoints);
-  }, [answers]);
-
-  // Score label
-  const scoreLabel = useMemo(() => {
-    if (score >= 70) return 'Well Protected';
-    if (score >= 40) return 'Moderate Risk';
-    return 'Vulnerable';
-  }, [score]);
-
-  // Insurance savings estimate
-  const insuranceSavings = useMemo(() => {
-    let savings = 0;
-    
-    if (answers.hasElevationCert) savings += 500;
-    if (answers.feetAboveBFE >= 2) savings += 800;
-    if (answers.hasFloodVents) savings += 300;
-    if (answers.foundationType === 'piles' || answers.foundationType === 'piers') savings += 400;
-    if (answers.roofType === 'metal') savings += 600;
-    if (answers.hasRoofDeck) savings += 400;
-    if (answers.windowProtection === 'impact') savings += 500;
-    if (answers.hasWaterShutoff) savings += 200;
-    
-    return savings;
-  }, [answers]);
-
-  // Potential additional savings
-  const potentialSavings = useMemo(() => {
-    let potential = 0;
-    
-    if (!answers.hasElevationCert) potential += 500;
-    if (!answers.feetAboveBFE || answers.feetAboveBFE < 2) potential += 800;
-    if (!answers.hasFloodVents) potential += 300;
-    if (!answers.hasRoofDeck) potential += 400;
-    if (!answers.windowProtection || answers.windowProtection === 'none') potential += 500;
-    if (!answers.hasWaterShutoff) potential += 200;
-    
-    return potential;
-  }, [answers]);
-
-  // Priority actions
-  const priorityActions = useMemo(() => {
-    const actions = [];
-    
-    if (!answers.hasElevationCert) {
-      actions.push({
-        id: 'elevation-cert',
-        title: 'Get an Elevation Certificate',
-        description: 'This document shows exactly how high your home sits relative to flood levels. Required for accurate insurance rating.',
-        impact: 'Could save $500+/year on flood insurance',
-        status: 'priority',
-      });
+    if (zip && ZIP_DATA[zip]) {
+      lookupAddress(addressInput, zip);
+    } else if (addressInput.length > 0) {
+      setError("Please include a valid NJ shore zip code (e.g., 08742)");
     }
-    
-    if (!answers.hasFloodVents && propertyData.floodZone?.startsWith('A') || propertyData.floodZone?.startsWith('V')) {
-      actions.push({
-        id: 'flood-vents',
-        title: 'Install Flood Vents',
-        description: 'Allow water to flow through enclosed areas, reducing pressure on walls during floods.',
-        impact: 'Up to $300/year insurance savings',
-        status: 'priority',
-      });
-    }
-    
-    if (!answers.windowProtection || answers.windowProtection === 'none') {
-      actions.push({
-        id: 'windows',
-        title: 'Add Window Protection',
-        description: 'Impact windows or hurricane shutters protect against wind-borne debris.',
-        impact: 'Up to $500/year insurance savings',
-        status: 'priority',
-      });
-    }
-    
-    if (!answers.hasRoofDeck) {
-      actions.push({
-        id: 'roof-deck',
-        title: 'Seal Your Roof Deck',
-        description: 'A secondary water barrier under shingles prevents leaks if shingles blow off.',
-        impact: 'Up to $400/year insurance savings',
-        status: 'optional',
-      });
-    }
-    
-    if (!answers.hasWaterShutoff) {
-      actions.push({
-        id: 'water-shutoff',
-        title: 'Install Smart Water Shutoff',
-        description: 'Automatically detects leaks and shuts off water to prevent damage.',
-        impact: 'Up to $200/year + prevents water damage',
-        status: 'optional',
-      });
-    }
-    
-    // Mark completed items
-    if (answers.hasElevationCert) {
-      actions.push({
-        id: 'elevation-cert-done',
-        title: 'Elevation Certificate',
-        description: 'You have this important document.',
-        status: 'complete',
-      });
-    }
-    
-    return actions.slice(0, 5); // Show top 5
-  }, [answers, propertyData]);
-
-  // Days until legacy window closes
-  const daysUntilLegacy = useMemo(() => {
-    const now = new Date();
-    const diff = LEGACY_WINDOW_END - now;
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+  
+  const updateAnswer = useCallback((key, value) => {
+    setAnswers(prev => {
+      const newAnswers = { ...prev, [key]: value };
+      // Show confetti on first "yes" answer
+      if (value === true && prev[key] !== true) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 1500);
+      }
+      return newAnswers;
+    });
   }, []);
-
-  // Risk level based on flood zone
-  const riskLevel = useMemo(() => {
-    const zone = propertyData.floodZone;
-    if (!zone) return { level: 'Unknown', color: 'slate' };
-    if (zone.startsWith('V')) return { level: 'High Risk (Coastal)', color: 'red' };
-    if (zone.startsWith('A')) return { level: 'High Risk (Flood)', color: 'amber' };
-    if (zone === 'X') return { level: 'Moderate Risk', color: 'emerald' };
-    return { level: 'Unknown', color: 'slate' };
-  }, [propertyData.floodZone]);
-
-  // =============================================================================
-  // RENDER: ADDRESS ENTRY VIEW
-  // =============================================================================
-  if (currentView === 'entry') {
+  
+  const resetProperty = () => {
+    setProperty(null);
+    setAnswers({});
+    setAddressInput('');
+    localStorage.removeItem('shs_property_v4');
+    localStorage.removeItem('shs_answers_v4');
+  };
+  
+  // ===== COMPUTED VALUES =====
+  
+  // Count answered questions
+  const answeredCount = Object.keys(answers).filter(k => answers[k] !== null && answers[k] !== undefined).length;
+  const totalQuestions = 8;
+  
+  // Progress percentage (based on answered questions, not score)
+  const progress = Math.round((answeredCount / totalQuestions) * 100);
+  
+  // Encouraging message based on progress
+  const encouragement = useMemo(() => {
+    if (answeredCount === 0) return { emoji: '👋', text: "Let's learn about your home!" };
+    if (answeredCount < 3) return { emoji: '🌱', text: 'Great start! Keep going.' };
+    if (answeredCount < 5) return { emoji: '💪', text: "You're doing great!" };
+    if (answeredCount < totalQuestions) return { emoji: '🔥', text: 'Almost there!' };
+    return { emoji: '🎉', text: 'Amazing! Full picture unlocked!' };
+  }, [answeredCount]);
+  
+  // Only calculate score if we have enough answers
+  const hasEnoughData = answeredCount >= 3;
+  
+  const score = useMemo(() => {
+    if (!hasEnoughData) return null;
+    
+    let points = 0;
+    
+    if (answers.hasElevationCert === true) points += 15;
+    if (answers.hasFloodVents === true) points += 12;
+    if (answers.hasImpactWindows === true) points += 15;
+    if (answers.hasRoofDeck === true) points += 10;
+    if (answers.hasWaterShutoff === true) points += 8;
+    if (answers.hasBackupPower === true) points += 8;
+    if (answers.hasFloodInsurance === true) points += 12;
+    if (answers.elevatedAboveBFE === true) points += 20;
+    
+    return points;
+  }, [answers, hasEnoughData]);
+  
+  // Only show insurance savings for items they've confirmed
+  const confirmedSavings = useMemo(() => {
+    let total = 0;
+    if (answers.hasElevationCert === true) total += 500;
+    if (answers.hasFloodVents === true) total += 300;
+    if (answers.hasImpactWindows === true) total += 500;
+    if (answers.hasRoofDeck === true) total += 400;
+    if (answers.hasWaterShutoff === true) total += 200;
+    if (answers.elevatedAboveBFE === true) total += 800;
+    return total;
+  }, [answers]);
+  
+  // Potential savings (only for items they've said NO to, not unanswered)
+  const potentialSavings = useMemo(() => {
+    let total = 0;
+    if (answers.hasElevationCert === false) total += 500;
+    if (answers.hasFloodVents === false) total += 300;
+    if (answers.hasImpactWindows === false) total += 500;
+    if (answers.hasRoofDeck === false) total += 400;
+    if (answers.hasWaterShutoff === false) total += 200;
+    if (answers.elevatedAboveBFE === false) total += 800;
+    return total;
+  }, [answers]);
+  
+  // ===== RENDER: WELCOME SCREEN =====
+  if (!property) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-        <WeatherBanner alerts={weatherAlerts} />
+        <Confetti show={showConfetti} />
         
-        <div className="max-w-2xl mx-auto px-4 py-12">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full text-cyan-400 text-sm font-medium mb-6">
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          {/* Welcome Header */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full text-cyan-400 text-sm font-medium mb-6 border border-cyan-500/30">
               <Shield className="w-4 h-4" />
-              NJ Shore Resilience Tool
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Is Your Shore Home <span className="text-cyan-400">Protected?</span>
-            </h1>
-            <p className="text-lg text-slate-400 max-w-lg mx-auto">
-              Get your personalized resilience score and discover how to protect your investment from storms and floods.
-            </p>
-          </div>
-          
-          {/* Address Entry Card */}
-          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  value={propertyData.address || ''}
-                  onChange={(e) => setPropertyData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="123 Ocean Ave"
-                  className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white text-lg focus:border-cyan-500 focus:outline-none transition-colors"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Zip Code
-                </label>
-                <input
-                  type="text"
-                  value={propertyData.zipCode || ''}
-                  onChange={(e) => setPropertyData(prev => ({ ...prev, zipCode: e.target.value.slice(0, 5) }))}
-                  placeholder="08742"
-                  maxLength={5}
-                  className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white text-lg font-mono focus:border-cyan-500 focus:outline-none transition-colors"
-                />
-              </div>
-              
-              {error && (
-                <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-              
-              <button
-                onClick={lookupProperty}
-                disabled={isLoading}
-                className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Analyzing Your Property...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5" />
-                    Get My Resilience Score
-                  </>
-                )}
-              </button>
+              NJ Shore Home Protection Tool
             </div>
             
-            <p className="text-xs text-slate-500 text-center mt-4">
-              We'll look up your official FEMA flood zone data and provide personalized recommendations.
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Welcome! Let's protect{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+                your shore home
+              </span>
+            </h1>
+            
+            <p className="text-lg text-slate-400 max-w-lg mx-auto">
+              We'll look up your property info and help you discover ways to save money and stay safe.
             </p>
-          </div>
+          </motion.div>
           
-          {/* Trust indicators */}
-          <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-500">
+          {/* Address Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-slate-800/50 backdrop-blur rounded-3xl border border-slate-700 p-6 md:p-8"
+          >
+            <label className="block text-sm font-medium text-slate-300 mb-3">
+              Where's your shore home?
+            </label>
+            
+            <AddressInput
+              value={addressInput}
+              onChange={setAddressInput}
+              onSelect={handleAddressSelect}
+            />
+            
+            {error && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-3 text-red-400 text-sm"
+              >
+                {error}
+              </motion.p>
+            )}
+            
+            <button
+              onClick={handleManualLookup}
+              disabled={isLoading || !addressInput}
+              className="w-full mt-4 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-slate-600 disabled:to-slate-700 text-white font-bold text-lg rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Looking up your property...
+                </>
+              ) : (
+                <>
+                  <Search className="w-5 h-5" />
+                  Get Started
+                </>
+              )}
+            </button>
+            
+            <p className="text-xs text-slate-500 text-center mt-4">
+              We'll pull official FEMA flood data for your address
+            </p>
+          </motion.div>
+          
+          {/* Trust Badges */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-500"
+          >
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-emerald-500" />
-              Free to use
+              100% Free
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-cyan-500" />
-              Official FEMA data
+              Official FEMA Data
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-500" />
-              Results in seconds
+              Takes 2 Minutes
             </div>
-          </div>
-          
-          {/* Legacy window alert */}
-          {daysUntilLegacy > 0 && daysUntilLegacy < 180 && (
-            <div className="mt-8 p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl">
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-amber-400">Legacy Window Closing: {daysUntilLegacy} days left</p>
-                  <p className="text-sm text-slate-400 mt-1">
-                    New NJ CAFE rules require homes to be elevated higher. Apply before July 15, 2026 to use current standards.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          </motion.div>
         </div>
       </div>
     );
   }
-
-  // =============================================================================
-  // RENDER: RESULTS VIEW
-  // =============================================================================
+  
+  // ===== RENDER: MAIN DASHBOARD =====
   return (
     <div className="min-h-screen bg-slate-900">
-      <WeatherBanner alerts={weatherAlerts} />
+      <Confetti show={showConfetti} />
       
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-500/20 rounded-lg">
-              <Shield className="w-5 h-5 text-cyan-400" />
+            <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl border border-cyan-500/30">
+              <Home className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <h1 className="font-bold text-white text-sm">ShoreHomeScore</h1>
-              <p className="text-xs text-slate-400">{propertyData.address || propertyData.zipCode}</p>
+              <h1 className="font-bold text-white">{property.municipality || property.address}</h1>
+              <p className="text-xs text-slate-400">{property.zipCode} • {property.county} County</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 rounded-full">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-bold text-emerald-400">${insuranceSavings.toLocaleString()}/yr saved</span>
-            </div>
-            
-            <button
-              onClick={() => setCurrentView('entry')}
-              className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
-            >
-              Change Address
-            </button>
-          </div>
+          <button
+            onClick={resetProperty}
+            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            Change Address
+          </button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Top Section: Score + Key Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Score Card */}
-          <div className="lg:col-span-1 bg-slate-800 rounded-2xl border border-slate-700 p-6">
-            <ScoreDisplay score={score} label={scoreLabel} />
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Progress & Encouragement */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-3xl border border-slate-700 p-6"
+        >
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <ProgressRing progress={progress} />
             
-            <div className="mt-6 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Your Score</span>
-                <span className="text-white font-bold">{score}/100</span>
-              </div>
-              <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all ${
-                    score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${score}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-500 text-center">
-                Answer more questions below to improve accuracy
+            <div className="flex-1 text-center md:text-left">
+              <div className="text-3xl mb-2">{encouragement.emoji}</div>
+              <h2 className="text-xl font-bold text-white mb-1">{encouragement.text}</h2>
+              <p className="text-slate-400">
+                {answeredCount} of {totalQuestions} questions answered
               </p>
+              
+              {hasEnoughData && score !== null && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 rounded-full border border-emerald-500/30"
+                >
+                  <Star className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-400 font-bold">Protection Score: {score}/100</span>
+                </motion.div>
+              )}
             </div>
           </div>
-          
-          {/* Key Metrics */}
-          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-            <MetricCard
-              icon={Waves}
-              label="Flood Zone"
-              value={propertyData.floodZone || 'Unknown'}
-              subtext={riskLevel.level}
-              color={riskLevel.color}
-            />
-            <MetricCard
-              icon={ArrowUp}
-              label="Base Flood Elevation"
-              value={propertyData.bfe ? `${propertyData.bfe} ft` : 'Unknown'}
-              subtext={propertyData.bfe ? `CAFE requires ${propertyData.bfe + 4} ft` : 'Look up your BFE'}
-              color="cyan"
-            />
-            <MetricCard
-              icon={DollarSign}
-              label="Current Savings"
-              value={`$${insuranceSavings.toLocaleString()}`}
-              subtext="Estimated annual insurance savings"
-              color="emerald"
-            />
-            <MetricCard
-              icon={TrendingUp}
-              label="Potential Savings"
-              value={`+$${potentialSavings.toLocaleString()}`}
-              subtext="Available with improvements"
-              color="amber"
-            />
-          </div>
-        </div>
+        </motion.div>
 
-        {/* Neighborhood Context */}
-        {claimsData && (
-          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-amber-500/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
+        {/* What We Know (from FEMA/ZIP lookup - no user input needed) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <InsightCard
+            icon={Waves}
+            title="Flood Zone"
+            value={property.floodZone || '—'}
+            subtitle={property.femaVerified ? 'FEMA Verified' : 'From area data'}
+            color={property.floodZone?.startsWith('V') ? 'red' : property.floodZone?.startsWith('A') ? 'amber' : 'cyan'}
+            available={!!property.floodZone}
+          />
+          <InsightCard
+            icon={ArrowUp}
+            title="Base Flood Elev."
+            value={property.bfe ? `${property.bfe} ft` : '—'}
+            subtitle={property.bfe ? `CAFE: ${property.bfe + CAFE_ELEVATION} ft` : null}
+            color="cyan"
+            available={!!property.bfe}
+          />
+          <InsightCard
+            icon={DollarSign}
+            title="Your Savings"
+            value={confirmedSavings > 0 ? `$${confirmedSavings.toLocaleString()}` : '—'}
+            subtitle={confirmedSavings > 0 ? 'Per year' : 'Answer questions below'}
+            color="emerald"
+            available={confirmedSavings > 0}
+          />
+          <InsightCard
+            icon={Gift}
+            title="Available"
+            value={potentialSavings > 0 ? `+$${potentialSavings.toLocaleString()}` : '—'}
+            subtitle={potentialSavings > 0 ? 'Potential savings' : 'Keep answering!'}
+            color="amber"
+            available={potentialSavings > 0}
+          />
+        </div>
+        
+        {/* Neighborhood Claims - only if we have data */}
+        {property.claims && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              <h3 className="font-bold text-white">Your Neighborhood's History</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-3xl font-bold text-amber-400">{property.claims.totalClaims?.toLocaleString()}</p>
+                <p className="text-sm text-slate-400">Flood claims filed</p>
               </div>
               <div>
-                <h3 className="font-bold text-white">Your Neighborhood's Flood History</h3>
-                <p className="text-sm text-slate-400">{propertyData.zipCode} • {propertyData.municipality}</p>
+                <p className="text-3xl font-bold text-white">${(property.claims.avgPayout || 45000).toLocaleString()}</p>
+                <p className="text-sm text-slate-400">Average payout</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-2xl font-bold text-amber-400">{claimsData.totalClaims?.toLocaleString() || '—'}</p>
-                <p className="text-xs text-slate-500">Total Claims Filed</p>
-              </div>
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-2xl font-bold text-white">${(claimsData.avgPayout || 45000).toLocaleString()}</p>
-                <p className="text-xs text-slate-500">Avg Claim Payout</p>
-              </div>
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-2xl font-bold text-cyan-400">{propertyData.bfe || '—'} ft</p>
-                <p className="text-xs text-slate-500">Base Flood Elevation</p>
-              </div>
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-2xl font-bold text-red-400">{propertyData.bfe ? propertyData.bfe + 4 : '—'} ft</p>
-                <p className="text-xs text-slate-500">CAFE Requirement</p>
-              </div>
-            </div>
-          </div>
+          </motion.div>
         )}
 
-        {/* Priority Actions */}
-        <div className="bg-slate-800 rounded-2xl border border-slate-700 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-500/20 rounded-lg">
-                <Target className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">Your Action Plan</h3>
-                <p className="text-sm text-slate-400">Prioritized steps to protect your home</p>
-              </div>
-            </div>
-          </div>
+        {/* Questions Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-cyan-400" />
+            Tell us about your home
+          </h3>
           
           <div className="space-y-3">
-            {priorityActions.map((action, i) => (
-              <ActionItem
-                key={action.id}
-                number={i + 1}
-                {...action}
-              />
-            ))}
+            <QuestionCard
+              icon={FileText}
+              question="Do you have an Elevation Certificate?"
+              description="An official document showing your home's height relative to flood levels"
+              value={answers.hasElevationCert}
+              onChange={(v) => updateAnswer('hasElevationCert', v)}
+              impact="This typically saves $500+/year on flood insurance!"
+            />
+            
+            <QuestionCard
+              icon={ArrowUp}
+              question="Is your lowest floor above the Base Flood Elevation?"
+              description={property.bfe ? `Your BFE is ${property.bfe} ft. Is your first floor higher than this?` : "The level flood waters are expected to reach"}
+              value={answers.elevatedAboveBFE}
+              onChange={(v) => updateAnswer('elevatedAboveBFE', v)}
+              impact="Elevation above BFE can save $800+/year!"
+            />
+            
+            <QuestionCard
+              icon={Droplets}
+              question="Do you have flood vents installed?"
+              description="Vents in foundation or garage walls that let water flow through"
+              value={answers.hasFloodVents}
+              onChange={(v) => updateAnswer('hasFloodVents', v)}
+              impact="Proper venting saves around $300/year"
+            />
+            
+            <QuestionCard
+              icon={Wind}
+              question="Do you have impact windows or hurricane shutters?"
+              description="Windows rated to withstand hurricane-force winds and debris"
+              value={answers.hasImpactWindows}
+              onChange={(v) => updateAnswer('hasImpactWindows', v)}
+              impact="Window protection saves up to $500/year on wind coverage"
+            />
+            
+            <QuestionCard
+              icon={Shield}
+              question="Do you have a sealed roof deck?"
+              description="A waterproof membrane under your shingles (secondary water barrier)"
+              value={answers.hasRoofDeck}
+              onChange={(v) => updateAnswer('hasRoofDeck', v)}
+              impact="Sealed roof deck saves around $400/year"
+            />
+            
+            <QuestionCard
+              icon={Droplets}
+              question="Do you have a smart water shutoff valve?"
+              description="Automatically detects leaks and shuts off water supply"
+              value={answers.hasWaterShutoff}
+              onChange={(v) => updateAnswer('hasWaterShutoff', v)}
+              impact="Smart shutoff saves ~$200/year + prevents damage"
+            />
+            
+            <QuestionCard
+              icon={Zap}
+              question="Do you have backup power (generator or battery)?"
+              description="Keeps critical systems running during outages"
+              value={answers.hasBackupPower}
+              onChange={(v) => updateAnswer('hasBackupPower', v)}
+              impact="Backup power helps prevent secondary damage"
+            />
+            
+            <QuestionCard
+              icon={Shield}
+              question="Do you have flood insurance?"
+              description="NFIP or private flood insurance policy"
+              value={answers.hasFloodInsurance}
+              onChange={(v) => updateAnswer('hasFloodInsurance', v)}
+              impact="You're protected! Smart move."
+            />
           </div>
         </div>
-
-        {/* Quick Assessment */}
-        <ExpandableSection title="Quick Home Assessment" icon={Home} defaultOpen={true}>
-          <p className="text-sm text-slate-400 mb-4">
-            Answer these questions to get a more accurate score and personalized recommendations.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <QuickToggle
-              label="I have an Elevation Certificate"
-              description="Official document showing your home's elevation"
-              value={answers.hasElevationCert}
-              onChange={(v) => setAnswers(prev => ({ ...prev, hasElevationCert: v }))}
-            />
-            <QuickToggle
-              label="I have flood vents installed"
-              description="Vents in foundation/garage walls"
-              value={answers.hasFloodVents}
-              onChange={(v) => setAnswers(prev => ({ ...prev, hasFloodVents: v }))}
-            />
-            <QuickToggle
-              label="I have a sealed roof deck"
-              description="Waterproof membrane under shingles"
-              value={answers.hasRoofDeck}
-              onChange={(v) => setAnswers(prev => ({ ...prev, hasRoofDeck: v }))}
-            />
-            <QuickToggle
-              label="I have impact windows or shutters"
-              description="Hurricane-rated window protection"
-              value={answers.windowProtection === 'impact' || answers.windowProtection === 'shutters'}
-              onChange={(v) => setAnswers(prev => ({ ...prev, windowProtection: v ? 'impact' : 'none' }))}
-            />
-            <QuickToggle
-              label="I have a smart water shutoff"
-              description="Auto leak detection system"
-              value={answers.hasWaterShutoff}
-              onChange={(v) => setAnswers(prev => ({ ...prev, hasWaterShutoff: v }))}
-            />
-            <QuickToggle
-              label="I have flood insurance"
-              description="NFIP or private flood policy"
-              value={answers.hasFloodInsurance}
-              onChange={(v) => setAnswers(prev => ({ ...prev, hasFloodInsurance: v }))}
-            />
-          </div>
-          
-          {/* Elevation question */}
-          <div className="mt-4 p-4 bg-slate-900/50 rounded-xl">
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              How high is your lowest floor above the Base Flood Elevation (BFE)?
-            </label>
-            <select
-              value={answers.feetAboveBFE ?? ''}
-              onChange={(e) => setAnswers(prev => ({ ...prev, feetAboveBFE: e.target.value ? Number(e.target.value) : undefined }))}
-              className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white"
-            >
-              <option value="">I'm not sure</option>
-              <option value="-2">2+ feet below BFE</option>
-              <option value="-1">1 foot below BFE</option>
-              <option value="0">At BFE (same level)</option>
-              <option value="1">1 foot above BFE</option>
-              <option value="2">2 feet above BFE</option>
-              <option value="3">3 feet above BFE</option>
-              <option value="4">4+ feet above BFE (meets CAFE)</option>
-            </select>
-          </div>
-        </ExpandableSection>
-
-        {/* Insurance Breakdown */}
-        <ExpandableSection title="Insurance Savings Breakdown" icon={DollarSign}>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg">
-              <span className="text-slate-300">Elevation Certificate</span>
-              <span className={answers.hasElevationCert ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {answers.hasElevationCert ? '+$500/yr' : '$500/yr available'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg">
-              <span className="text-slate-300">Elevation Above BFE</span>
-              <span className={answers.feetAboveBFE >= 2 ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {answers.feetAboveBFE >= 2 ? '+$800/yr' : '$800/yr available'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg">
-              <span className="text-slate-300">Flood Vents</span>
-              <span className={answers.hasFloodVents ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {answers.hasFloodVents ? '+$300/yr' : '$300/yr available'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg">
-              <span className="text-slate-300">Sealed Roof Deck</span>
-              <span className={answers.hasRoofDeck ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {answers.hasRoofDeck ? '+$400/yr' : '$400/yr available'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg">
-              <span className="text-slate-300">Impact Windows/Shutters</span>
-              <span className={answers.windowProtection === 'impact' || answers.windowProtection === 'shutters' ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {answers.windowProtection === 'impact' || answers.windowProtection === 'shutters' ? '+$500/yr' : '$500/yr available'}
-              </span>
+        
+        {/* Savings Breakdown - only shows items we know about */}
+        {(confirmedSavings > 0 || potentialSavings > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-slate-800 rounded-2xl border border-slate-700 p-5"
+          >
+            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              Your Insurance Savings
+            </h3>
+            
+            <div className="space-y-2">
+              {answers.hasElevationCert !== undefined && (
+                <SavingsItem label="Elevation Certificate" amount={500} achieved={answers.hasElevationCert} />
+              )}
+              {answers.elevatedAboveBFE !== undefined && (
+                <SavingsItem label="Elevated Above BFE" amount={800} achieved={answers.elevatedAboveBFE} />
+              )}
+              {answers.hasFloodVents !== undefined && (
+                <SavingsItem label="Flood Vents" amount={300} achieved={answers.hasFloodVents} />
+              )}
+              {answers.hasImpactWindows !== undefined && (
+                <SavingsItem label="Impact Windows/Shutters" amount={500} achieved={answers.hasImpactWindows} />
+              )}
+              {answers.hasRoofDeck !== undefined && (
+                <SavingsItem label="Sealed Roof Deck" amount={400} achieved={answers.hasRoofDeck} />
+              )}
+              {answers.hasWaterShutoff !== undefined && (
+                <SavingsItem label="Smart Water Shutoff" amount={200} achieved={answers.hasWaterShutoff} />
+              )}
             </div>
             
-            <div className="border-t border-slate-700 pt-3 mt-3">
-              <div className="flex justify-between items-center">
-                <span className="text-white font-bold">Total Annual Savings</span>
-                <span className="text-emerald-400 font-bold text-xl">${insuranceSavings.toLocaleString()}/yr</span>
+            {confirmedSavings > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+                <span className="font-bold text-white">Your Annual Savings</span>
+                <span className="text-2xl font-bold text-emerald-400">${confirmedSavings.toLocaleString()}/yr</span>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-slate-400">10-Year Impact</span>
-                <span className="text-white font-bold">${(insuranceSavings * 10).toLocaleString()}</span>
+            )}
+            
+            {potentialSavings > 0 && (
+              <div className="mt-2 flex justify-between items-center text-sm">
+                <span className="text-slate-400">Still available with improvements</span>
+                <span className="text-amber-400 font-bold">+${potentialSavings.toLocaleString()}/yr</span>
               </div>
-            </div>
-          </div>
-        </ExpandableSection>
+            )}
+          </motion.div>
+        )}
 
-        {/* Future Risk */}
-        <ExpandableSection title="Future Flood Risk" icon={Waves}>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-              <p className="text-3xl font-bold text-amber-400">
-                {propertyData.floodZone?.startsWith('V') ? '9' : propertyData.floodZone?.startsWith('A') ? '7' : '3'}/10
-              </p>
-              <p className="text-xs text-slate-500 mt-1">Current Risk</p>
-            </div>
-            <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-              <p className="text-3xl font-bold text-orange-400">
-                {propertyData.floodZone?.startsWith('V') ? '10' : propertyData.floodZone?.startsWith('A') ? '8' : '5'}/10
-              </p>
-              <p className="text-xs text-slate-500 mt-1">15-Year Projection</p>
-            </div>
-            <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-              <p className="text-3xl font-bold text-red-400">
-                {propertyData.floodZone?.startsWith('V') ? '10' : propertyData.floodZone?.startsWith('A') ? '9' : '6'}/10
-              </p>
-              <p className="text-xs text-slate-500 mt-1">30-Year Projection</p>
-            </div>
-          </div>
-          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-            <p className="text-sm text-slate-300">
-              <strong className="text-blue-400">Sea Level Rise:</strong> NJ coastal areas are projected to see 
-              <strong className="text-white"> 1.5-2.5 feet</strong> of sea level rise by 2050. Properties in Zone X today 
-              may be reclassified to AE zones.
-            </p>
-          </div>
-        </ExpandableSection>
-
-        {/* CTA Section */}
-        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl border border-cyan-500/30 p-6">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-white mb-2">Ready to Protect Your Home?</h3>
-              <p className="text-slate-400">
-                Get quotes from licensed NJ Shore contractors who specialize in flood mitigation, elevation, and storm hardening.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-xl transition-colors flex items-center gap-2">
+        {/* CTA - only show when they have some engagement */}
+        {answeredCount >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl border border-cyan-500/30 p-6"
+          >
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-xl font-bold text-white mb-2">Want Help Protecting Your Home?</h3>
+                <p className="text-slate-400">
+                  Connect with local contractors who specialize in shore home improvements.
+                </p>
+              </div>
+              <button className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap">
                 <Phone className="w-5 h-5" />
                 Get Free Quotes
               </button>
-              <button className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Download Report
-              </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        )}
 
         {/* Footer */}
         <footer className="text-center py-6 text-sm text-slate-500">
-          <p>ShoreHomeScore • NJ Shore Resilience Assessment Tool</p>
-          <p className="mt-1">Data from FEMA, NOAA, and NJ DEP • For informational purposes only</p>
+          <p>ShoreHomeScore • Helping NJ Shore Homeowners Stay Safe</p>
         </footer>
       </main>
     </div>
