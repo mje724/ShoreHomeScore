@@ -1598,25 +1598,37 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
     setLookupSuccess(false);
     
     try {
-      // Step 1: Geocode the address using Census Bureau API (free, no key needed)
-      const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
+      // Step 1: Geocode the address using a CORS-friendly proxy
+      // Using allorigins.win as a free CORS proxy
+      const censusUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(censusUrl)}`;
       
-      const geocodeResponse = await fetch(geocodeUrl);
-      const geocodeData = await geocodeResponse.json();
+      const geocodeResponse = await fetch(proxyUrl);
+      const proxyData = await geocodeResponse.json();
+      const geocodeData = JSON.parse(proxyData.contents);
       
       if (!geocodeData.result?.addressMatches?.length) {
-        setLookupError('Address not found. Please check and try again.');
+        setLookupError('Address not found. Try adding city name (e.g., "123 Ocean Ave, Point Pleasant Beach")');
         setIsLookingUp(false);
         return;
       }
       
       const { x: lng, y: lat } = geocodeData.result.addressMatches[0].coordinates;
       
-      // Step 2: Query FEMA NFHL for flood zone data
+      // Step 2: Query FEMA NFHL for flood zone data (this one usually works without proxy)
       const femaUrl = `https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lng}%2C${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE%2CSTATIC_BFE%2CDEPTH%2CZONE_SUBTY&returnGeometry=false&f=json`;
       
-      const femaResponse = await fetch(femaUrl);
-      const femaData = await femaResponse.json();
+      let femaData;
+      try {
+        const femaResponse = await fetch(femaUrl);
+        femaData = await femaResponse.json();
+      } catch (femaErr) {
+        // If direct fails, try through proxy
+        const femaProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(femaUrl)}`;
+        const femaProxyResponse = await fetch(femaProxyUrl);
+        const femaProxyData = await femaProxyResponse.json();
+        femaData = JSON.parse(femaProxyData.contents);
+      }
       
       if (femaData.features?.length > 0) {
         const feature = femaData.features[0].attributes;
@@ -1646,8 +1658,17 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
       // Step 3: Get neighborhood claims data from OpenFEMA
       try {
         const claimsUrl = `https://www.fema.gov/api/open/v2/FimaNfipClaims?$filter=reportedZipcode%20eq%20%27${formData.zipCode}%27&$top=1000`;
-        const claimsResponse = await fetch(claimsUrl);
-        const claimsJson = await claimsResponse.json();
+        let claimsJson;
+        try {
+          const claimsResponse = await fetch(claimsUrl);
+          claimsJson = await claimsResponse.json();
+        } catch (claimsErr) {
+          // Try through proxy if direct fails
+          const claimsProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(claimsUrl)}`;
+          const claimsProxyResponse = await fetch(claimsProxyUrl);
+          const claimsProxyData = await claimsProxyResponse.json();
+          claimsJson = JSON.parse(claimsProxyData.contents);
+        }
         
         if (claimsJson.FimaNfipClaims?.length > 0) {
           const claims = claimsJson.FimaNfipClaims;
