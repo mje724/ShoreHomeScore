@@ -246,9 +246,216 @@ const GlossaryModal = ({ isOpen, onClose }) => {
 };
 
 // =============================================================================
+// PROGRAMS MODAL
+// =============================================================================
+const ProgramsModal = ({ isOpen, onClose, updates, county }) => {
+  if (!isOpen || !updates) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-slate-800 rounded-2xl border border-slate-700 max-w-2xl w-full max-h-[85vh] overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-bold text-white">Programs & Updates</h2>
+            <span className="text-xs text-slate-400">{county} County</span>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-lg">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        
+        <div className="overflow-y-auto max-h-[70vh] p-4 space-y-4">
+          {/* Deadlines */}
+          {updates.deadlines?.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">⏰ Key Deadlines</h3>
+              <div className="space-y-2">
+                {updates.deadlines.slice(0, 3).map(d => (
+                  <div key={d.id} className={`p-3 rounded-xl border ${d.urgent ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-700/30 border-slate-600'}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-white">{d.title}</p>
+                        <p className="text-sm text-slate-400 mt-1">{d.description}</p>
+                      </div>
+                      <span className={`text-sm font-bold ${d.daysUntil < 90 ? 'text-amber-400' : 'text-slate-400'}`}>
+                        {d.daysUntil} days
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Programs */}
+          {updates.programs?.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">💰 Available Programs</h3>
+              <div className="space-y-2">
+                {updates.programs.map(p => (
+                  <div key={p.id} className={`p-4 rounded-xl border ${p.relevant ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-700/30 border-slate-600'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-white">{p.title}</p>
+                          {p.relevant && <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">May Apply</span>}
+                        </div>
+                        <p className="text-xs text-cyan-400 mt-1">{p.agency}</p>
+                        <p className="text-sm text-slate-400 mt-2">{p.description}</p>
+                        <p className="text-sm text-slate-300 mt-2"><span className="text-slate-500">Funding:</span> {p.funding}</p>
+                      </div>
+                    </div>
+                    {p.link && (
+                      <a href={p.link} target="_blank" rel="noopener noreferrer" 
+                         className="inline-flex items-center gap-1 mt-3 text-sm text-cyan-400 hover:text-cyan-300">
+                        Learn more →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* County Info */}
+          {updates.countyInfo && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">📍 {county} County Info</h3>
+              <div className="bg-slate-700/30 border border-slate-600 rounded-xl p-4">
+                {updates.countyInfo.crsDiscount && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-slate-400">CRS Flood Insurance Discount</span>
+                    <span className="text-emerald-400 font-bold">{updates.countyInfo.crsDiscount}</span>
+                  </div>
+                )}
+                {updates.countyInfo.note && (
+                  <p className="text-sm text-slate-400">{updates.countyInfo.note}</p>
+                )}
+                {updates.countyInfo.recentActivity && (
+                  <p className="text-sm text-cyan-400 mt-2">📰 {updates.countyInfo.recentActivity}</p>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Recent Disasters */}
+          {updates.disasters?.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">🌀 Recent Declarations</h3>
+              <div className="space-y-2">
+                {updates.disasters.slice(0, 3).map(d => (
+                  <div key={d.number} className="bg-slate-700/30 border border-slate-600 rounded-xl p-3">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-white">DR-{d.number}</span>
+                      <span className="text-xs text-slate-500">{new Date(d.date).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm text-slate-400">{d.title}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+          <p className="text-xs text-slate-500 text-center">
+            Data from FEMA OpenAPI, NJ DEP, NJ DCA • Updated hourly
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// =============================================================================
+// UPDATES BANNER
+// =============================================================================
+const UpdatesBanner = ({ updates, onViewAll }) => {
+  if (!updates || !updates.summary) return null;
+  
+  const { activePrograms, urgentDeadlines } = updates.summary;
+  const topAlert = updates.alerts?.[0];
+  
+  if (activePrograms === 0 && urgentDeadlines === 0) return null;
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-emerald-500/10 border border-amber-500/30 rounded-xl p-4"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-500/20 rounded-lg">
+            <Bell className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <p className="font-medium text-white">
+              {activePrograms} program{activePrograms !== 1 ? 's' : ''} may apply to you
+            </p>
+            {topAlert && (
+              <p className="text-sm text-slate-400 mt-0.5">{topAlert.message}</p>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onViewAll}
+          className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+        >
+          View Programs
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+// =============================================================================
+// CONTEXTUAL PROGRAM HINT
+// =============================================================================
+const ProgramHint = ({ program, show }) => {
+  if (!show || !program) return null;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg"
+    >
+      <p className="text-xs text-emerald-400 font-medium">💰 {program.title}</p>
+      <p className="text-xs text-slate-300 mt-1">{program.funding}</p>
+      {program.link && (
+        <a href={program.link} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-400 hover:underline">
+          Learn more →
+        </a>
+      )}
+    </motion.div>
+  );
+};
+
+// =============================================================================
 // PDF REPORT
 // =============================================================================
-const generatePDF = (property, town, data, score, savings) => {
+const generatePDF = (property, town, data, score, savings, localUpdates) => {
+  // Build programs section if available
+  let programsHtml = '';
+  if (localUpdates?.programs?.filter(p => p.relevant).length > 0) {
+    const relevantPrograms = localUpdates.programs.filter(p => p.relevant);
+    programsHtml = `
+<div class="section"><h2>💰 Programs You May Qualify For</h2>
+<ul class="checklist">
+${relevantPrograms.map(p => `<li><span>${p.title}</span><span style="color:#22d3ee">${p.agency}</span></li>`).join('')}
+</ul>
+<p style="color:#94a3b8;font-size:11px;margin-top:12px">Visit ShoreHomeScore.com for links and eligibility details</p>
+</div>`;
+  }
+  
   const html = `<!DOCTYPE html>
 <html><head><title>ShoreHomeScore Report</title>
 <style>
@@ -309,6 +516,7 @@ ${data.windowProtection === 'impact' ? '<li><span>Impact Windows</span><span cla
 <li style="border-top:2px solid #334155;margin-top:8px;padding-top:12px"><span><strong>Total Annual Savings</strong></span><span style="color:#10b981;font-weight:bold">$${savings.toLocaleString()}/yr</span></li>
 <li><span>10-Year Impact</span><span style="color:#fff">$${(savings * 10).toLocaleString()}</span></li>
 </ul></div>
+${programsHtml}
 <div class="footer"><p>ShoreHomeScore • Data: FEMA, NOAA, NJ DEP • For informational purposes only</p></div>
 </body></html>`;
   
@@ -509,9 +717,11 @@ export default function CommandCenter() {
   });
   
   const [showGlossary, setShowGlossary] = useState(false);
+  const [showPrograms, setShowPrograms] = useState(false);
   const [tideData, setTideData] = useState(null);
   const [weatherAlerts, setWeatherAlerts] = useState([]);
   const [femaData, setFemaData] = useState(null);
+  const [localUpdates, setLocalUpdates] = useState(null);
   const [loading, setLoading] = useState(false);
   
   // Persistence
@@ -542,7 +752,15 @@ export default function CommandCenter() {
       .then(r => r.json())
       .then(d => { if (d.alerts) setWeatherAlerts(d.alerts); })
       .catch(() => {});
-  }, [town]);
+    
+    // Fetch local updates (programs, grants, deadlines)
+    const belowBfe = data.elevationVsBFE === 'below';
+    const hasNfip = data.floodInsurance === 'yes';
+    fetch(`/api/local-updates?county=${encodeURIComponent(town.county)}&zone=${town.zone}&belowBfe=${belowBfe}&hasNfip=${hasNfip}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setLocalUpdates(d); })
+      .catch(() => {});
+  }, [town, data.elevationVsBFE, data.floodInsurance]);
   
   // Fetch FEMA data when address changes
   const lookupAddress = async () => {
@@ -675,6 +893,7 @@ export default function CommandCenter() {
   return (
     <div className="min-h-screen bg-slate-900">
       <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
+      <ProgramsModal isOpen={showPrograms} onClose={() => setShowPrograms(false)} updates={localUpdates} county={town.county} />
       
       {/* Sticky Header */}
       <header className="bg-slate-800/95 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
@@ -696,10 +915,18 @@ export default function CommandCenter() {
                 <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-sm font-bold text-emerald-400">${savings.toLocaleString()}</span>
               </div>
+              {localUpdates?.summary?.activePrograms > 0 && (
+                <button onClick={() => setShowPrograms(true)} className="p-2 hover:bg-slate-700 rounded-lg relative">
+                  <Bell className="w-4 h-4 text-amber-400" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {localUpdates.summary.activePrograms}
+                  </span>
+                </button>
+              )}
               <button onClick={() => setShowGlossary(true)} className="p-2 hover:bg-slate-700 rounded-lg">
                 <Book className="w-4 h-4 text-slate-400" />
               </button>
-              <button onClick={() => generatePDF(property, town, data, score, savings)} className="p-2 hover:bg-slate-700 rounded-lg">
+              <button onClick={() => generatePDF(property, town, data, score, savings, localUpdates)} className="p-2 hover:bg-slate-700 rounded-lg">
                 <Download className="w-4 h-4 text-slate-400" />
               </button>
               <button onClick={() => { setTown(null); setProperty({ address: '' }); localStorage.removeItem('shs_town_v8'); }} className="p-2 hover:bg-slate-700 rounded-lg">
@@ -807,6 +1034,9 @@ export default function CommandCenter() {
             ))}
           </div>
         )}
+
+        {/* Local Updates Banner */}
+        <UpdatesBanner updates={localUpdates} onViewAll={() => setShowPrograms(true)} />
 
         {/* Categories */}
         <div className="space-y-3">
