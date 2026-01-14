@@ -445,8 +445,8 @@ export default function ShoreHomeScore() {
             {town && (
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-emerald-400">{totalScore}</p>
-                  <p className="text-xs text-slate-400">/ {maxScore} points</p>
+                  <p className="text-2xl font-bold text-emerald-400">{Math.round((totalScore / maxScore) * 100)}</p>
+                  <p className="text-xs text-slate-400">/ 100</p>
                 </div>
               </div>
             )}
@@ -585,11 +585,11 @@ export default function ShoreHomeScore() {
         {town && (
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
             <div className="flex items-center justify-between">
-              <ScoreGauge score={totalScore} maxScore={maxScore} />
+              <ScoreGauge score={Math.round((totalScore / maxScore) * 100)} maxScore={100} />
               <div className="text-right">
                 <p className="text-slate-400 text-sm mb-1">Resilience Score</p>
-                <p className="text-3xl font-bold text-white">{Math.round((totalScore / maxScore) * 100)}%</p>
-                <p className="text-slate-500 text-sm">{totalScore} of {maxScore} points</p>
+                <p className="text-3xl font-bold text-white">{Math.round((totalScore / maxScore) * 100)}<span className="text-lg text-slate-400">/100</span></p>
+                <p className="text-slate-500 text-sm">{totalScore} of {maxScore} pts earned</p>
               </div>
             </div>
           </div>
@@ -829,17 +829,28 @@ export default function ShoreHomeScore() {
                     <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
                       <p className="font-medium text-white mb-3">Work That Requires Permits</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Roofing replacement</div>
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Deck construction/repair</div>
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Window/door replacement</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Structural modifications</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Deck construction (new)</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Room additions</div>
                         <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Electrical panel upgrades</div>
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> HVAC installation</div>
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Plumbing modifications</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> New HVAC installation</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Plumbing rough-in/rerouting</div>
                         <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Flood vent installation</div>
                         <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Foundation work</div>
-                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Additions/extensions</div>
                         <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Elevation projects</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Finishing basement/attic</div>
                       </div>
+                      
+                      <p className="font-medium text-white mt-4 mb-2">Typically NO Permit Needed</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-400">
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Roof replacement (same materials, no structural)</div>
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Siding replacement (like-for-like)</div>
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Interior painting/flooring</div>
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Replacing fixtures (same location)</div>
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Minor repairs under $5k</div>
+                        <div className="flex items-center gap-2"><X className="w-4 h-4 text-slate-500" /> Landscaping (non-grading)</div>
+                      </div>
+                      <p className="text-xs text-amber-400 mt-3">⚠️ Always check with your local building department - rules vary by municipality</p>
                     </div>
                     
                     {/* Common Violations */}
