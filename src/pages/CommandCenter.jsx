@@ -607,17 +607,26 @@ export default function ShoreHomeScore() {
           </div>
           
           <form onSubmit={handleAddressSubmit} className="space-y-4">
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Start typing your address..."
-                className="w-full pl-12 pr-4 py-4 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg"
-              />
-              {addressLoading && <div className="absolute right-4 top-1/2 -translate-y-1/2"><div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" /></div>}
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Start typing your address..."
+                  className="w-full pl-12 pr-4 py-4 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg"
+                />
+                {addressLoading && <div className="absolute right-4 top-1/2 -translate-y-1/2"><div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" /></div>}
+              </div>
+              <button 
+                type="submit" 
+                disabled={!address.trim() || addressLoading}
+                className="px-6 py-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-slate-900 font-bold rounded-xl transition-colors whitespace-nowrap"
+              >
+                {addressLoading ? 'Looking up...' : 'Check Address'}
+              </button>
             </div>
             
             {addressError && <p className="text-amber-400 text-sm">{addressError}</p>}
