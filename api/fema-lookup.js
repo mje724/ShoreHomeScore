@@ -33,7 +33,10 @@ export default async function handler(req) {
   }
   
   try {
-    const fullAddress = `${address}, ${zipCode}`;
+    // Build full address - if address already contains state/zip, use as-is
+    // Otherwise append the zipCode
+    const hasZipOrState = /\d{5}|,\s*NJ/i.test(address);
+    const fullAddress = hasZipOrState ? address : `${address}, NJ ${zipCode}`;
     
     // Step 1: Geocode the address using Census Bureau
     const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
