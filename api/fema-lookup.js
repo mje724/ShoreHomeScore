@@ -66,8 +66,8 @@ export default async function handler(req) {
     
     console.log('Found coordinates:', lat, lng);
     
-    // Step 2: Query FEMA NFHL for flood zone data
-    const femaUrl = `https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lng}%2C${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE%2CSTATIC_BFE%2CDEPTH%2CZONE_SUBTY&returnGeometry=false&f=json`;
+    // Step 2: Query FEMA NFHL for flood zone data (updated endpoint)
+    const femaUrl = `https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lng}%2C${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE%2CSTATIC_BFE%2CZONE_SUBTY&returnGeometry=false&f=json`;
     
     let floodZone = 'X';
     let bfe = null;
