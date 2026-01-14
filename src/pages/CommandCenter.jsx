@@ -659,34 +659,11 @@ export default function ShoreHomeScore() {
   const LEGACY_WINDOW_END = new Date('2026-07-15');
   const legacyDaysLeft = Math.max(0, Math.ceil((LEGACY_WINDOW_END - new Date()) / (1000 * 60 * 60 * 24)));
   
-  // Lookup address via FEMA
-  const lookupAddress = async () => {
-    if (!address.trim()) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(address)}&zipCode=`);
-      const data = await res.json();
-      
-      if (data.success) {
-        setPropertyData({
-          address: data.matchedAddress,
-          coordinates: data.coordinates,
-          floodZone: data.floodZone,
-          bfe: data.bfe && data.bfe > 0 ? data.bfe : null,
-          zoneSubtype: data.zoneSubtype,
-        });
-        setStep('assessment');
-      } else {
-        setError(data.error || 'Address not found. Try including city and state.');
-      }
-    } catch (e) {
-      setError('Unable to look up address. Please try again.');
+  // Simple lookup for manual entry (fallback)
+  const lookupAddress = () => {
+    if (address.trim()) {
+      lookupAddressWithPlace(null);
     }
-    
-    setLoading(false);
   };
   
   // Calculate score
@@ -729,6 +706,85 @@ export default function ShoreHomeScore() {
     return total;
   }, [answers]);
 
+  // Google Places Autocomplete
+  const autocompleteRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (step !== 'landing') return;
+    
+    // Load Google Places script if not loaded
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''}&libraries=places`;
+      script.async = true;
+      script.onload = initAutocomplete;
+      document.head.appendChild(script);
+    } else {
+      initAutocomplete();
+    }
+    
+    function initAutocomplete() {
+      if (!inputRef.current || !window.google) return;
+      
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: 'us' },
+        fields: ['formatted_address', 'geometry', 'address_components'],
+        types: ['address'],
+      });
+      
+      // Bias to NJ Shore area
+      const njShoreBounds = new window.google.maps.LatLngBounds(
+        new window.google.maps.LatLng(39.3, -74.5), // SW
+        new window.google.maps.LatLng(40.5, -73.9)  // NE
+      );
+      autocompleteRef.current.setBounds(njShoreBounds);
+      
+      autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+    }
+  }, [step]);
+  
+  const handlePlaceSelect = () => {
+    const place = autocompleteRef.current?.getPlace();
+    if (place?.formatted_address) {
+      setAddress(place.formatted_address);
+      // Auto-submit after selection
+      setTimeout(() => {
+        lookupAddressWithPlace(place);
+      }, 100);
+    }
+  };
+  
+  const lookupAddressWithPlace = async (place) => {
+    setLoading(true);
+    setError(null);
+    
+    const addr = place?.formatted_address || address;
+    
+    try {
+      const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(addr)}&zipCode=`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setPropertyData({
+          address: data.matchedAddress || addr,
+          coordinates: data.coordinates,
+          floodZone: data.floodZone,
+          bfe: data.bfe && data.bfe > 0 ? data.bfe : null,
+          zoneSubtype: data.zoneSubtype,
+        });
+        setStep('assessment');
+      } else {
+        setError(data.error || 'Could not find flood data for this address. Please try a different address.');
+      }
+    } catch (e) {
+      setError('Unable to look up address. Please try again.');
+    }
+    
+    setLoading(false);
+  };
+
   // ===========================================
   // LANDING PAGE
   // ===========================================
@@ -762,38 +818,44 @@ export default function ShoreHomeScore() {
             <label className="block text-sm font-medium text-slate-300 mb-2">
               Enter your property address
             </label>
-            <div className="flex gap-2">
+            <div className="relative">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
+                ref={inputRef}
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && lookupAddress()}
-                placeholder="123 Ocean Ave, Belmar, NJ"
-                className="flex-1 px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                placeholder="Start typing your address..."
+                className="w-full pl-12 pr-4 py-4 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg"
+                autoComplete="off"
               />
-              <button
-                onClick={lookupAddress}
-                disabled={loading || !address.trim()}
-                className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 text-white rounded-xl font-medium flex items-center gap-2 transition-colors"
-              >
-                {loading ? <Loader className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                {loading ? 'Checking...' : 'Check'}
-              </button>
             </div>
             
-            {error && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-red-400 text-sm mt-3"
-              >
-                {error}
-              </motion.p>
+            {loading && (
+              <div className="flex items-center gap-2 mt-4 text-cyan-400">
+                <Loader className="w-5 h-5 animate-spin" />
+                <span>Looking up flood data...</span>
+              </div>
             )}
             
-            <p className="text-xs text-slate-500 mt-4">
-              We'll look up your flood zone, Base Flood Elevation, and compliance requirements from FEMA data.
-            </p>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg"
+              >
+                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-slate-400 text-xs mt-1">Try including the full address with city and state (e.g., "123 Ocean Ave, Belmar, NJ")</p>
+              </motion.div>
+            )}
+            
+            {!loading && !error && (
+              <p className="text-xs text-slate-500 mt-4 flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                We cover the entire New Jersey Shore from Sandy Hook to Cape May
+              </p>
+            )}
           </motion.div>
           
           <motion.div
@@ -813,6 +875,15 @@ export default function ShoreHomeScore() {
               </div>
             ))}
           </motion.div>
+          
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center text-slate-600 text-xs mt-8"
+          >
+            Powered by FEMA National Flood Hazard Layer
+          </motion.p>
         </div>
       </div>
     );
