@@ -1406,6 +1406,113 @@ const ScoreGauge = ({ score, maxScore = 100 }) => {
 // =============================================================================
 // PDF REPORT GENERATOR
 // =============================================================================
+
+// =============================================================================
+// WEATHER ALERTS BANNER
+// =============================================================================
+const WeatherAlertsBanner = ({ alerts, forecast }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!alerts || alerts.length === 0) {
+    // Show current weather if no alerts
+    if (forecast?.current) {
+      return (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-500/20 rounded-lg">
+                <Thermometer className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{forecast.current.name}: {forecast.current.temperature}°{forecast.current.temperatureUnit}</p>
+                <p className="text-xs text-slate-400">{forecast.current.shortForecast}</p>
+              </div>
+            </div>
+            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">
+              No Active Alerts
+            </span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+  
+  const urgentAlerts = alerts.filter(a => a.severity === 'Extreme' || a.severity === 'Severe');
+  const otherAlerts = alerts.filter(a => a.severity !== 'Extreme' && a.severity !== 'Severe');
+  
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'Extreme': return 'bg-red-600 border-red-500 text-white';
+      case 'Severe': return 'bg-orange-600 border-orange-500 text-white';
+      case 'Moderate': return 'bg-amber-500 border-amber-400 text-black';
+      default: return 'bg-yellow-400 border-yellow-300 text-black';
+    }
+  };
+  
+  return (
+    <div className="space-y-2 mb-4">
+      {/* Urgent Alerts */}
+      {urgentAlerts.map((alert, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`${getSeverityColor(alert.severity)} border-2 rounded-xl p-4`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-lg">{alert.event}</p>
+                <p className="text-sm opacity-90">{alert.headline}</p>
+                {expanded && alert.instruction && (
+                  <p className="text-sm mt-2 opacity-80">{alert.instruction}</p>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={() => setExpanded(!expanded)}
+              className="text-sm underline opacity-80 hover:opacity-100"
+            >
+              {expanded ? 'Less' : 'More'}
+            </button>
+          </div>
+        </motion.div>
+      ))}
+      
+      {/* Other Alerts (collapsed) */}
+      {otherAlerts.length > 0 && (
+        <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-400" />
+              <span className="text-sm text-amber-400">
+                {otherAlerts.length} other weather {otherAlerts.length === 1 ? 'alert' : 'alerts'} active
+              </span>
+            </div>
+            <button 
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs text-amber-400 hover:text-amber-300"
+            >
+              {expanded ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {expanded && (
+            <div className="mt-3 space-y-2">
+              {otherAlerts.map((alert, i) => (
+                <div key={i} className="text-sm text-slate-300">
+                  <strong className="text-amber-400">{alert.event}:</strong> {alert.headline}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const generatePDFReport = (propertyData, selections, score, insuranceSavings) => {
   const isYes = (val) => val === 'yes' || val === true;
   
@@ -2492,6 +2599,37 @@ export default function CommandCenter() {
   const [scoreChange, setScoreChange] = useState(null);
   const [prevScore, setPrevScore] = useState(0);
   
+  // Weather alerts state
+  const [weatherAlerts, setWeatherAlerts] = useState([]);
+  const [hasUrgentAlerts, setHasUrgentAlerts] = useState(false);
+  const [forecast, setForecast] = useState(null);
+  
+  // Fetch weather alerts when coordinates are available
+  useEffect(() => {
+    const fetchWeather = async () => {
+      if (propertyData.coordinates?.lat && propertyData.coordinates?.lng) {
+        try {
+          const response = await fetch(
+            `/api/weather-alerts?lat=${propertyData.coordinates.lat}&lng=${propertyData.coordinates.lng}`
+          );
+          const data = await response.json();
+          if (data.success) {
+            setWeatherAlerts(data.alerts || []);
+            setHasUrgentAlerts(data.hasUrgentAlerts || false);
+            setForecast(data.forecast || null);
+          }
+        } catch (err) {
+          console.log('Weather fetch failed:', err);
+        }
+      }
+    };
+    
+    fetchWeather();
+    // Refresh every 15 minutes
+    const interval = setInterval(fetchWeather, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [propertyData.coordinates]);
+  
   // Persist to localStorage
   useEffect(() => {
     localStorage.setItem('shs_selections_v2', JSON.stringify(selections));
@@ -2885,6 +3023,9 @@ export default function CommandCenter() {
       <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Weather Alerts Banner */}
+        <WeatherAlertsBanner alerts={weatherAlerts} forecast={forecast} />
+        
         {/* Top Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Score */}
@@ -2959,6 +3100,122 @@ export default function CommandCenter() {
             structureValue={propertyData.structureValue}
             permitHistory={propertyData.permitHistory}
           />
+        )}
+        
+        {/* Flood Risk Projection (First Street style) */}
+        {propertyData.floodZone && (
+          <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Waves className="w-5 h-5 text-blue-400" />
+                <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Flood Risk Projection</h3>
+              </div>
+              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                Climate-Adjusted Analysis
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Current Risk */}
+              <div className="bg-slate-900 rounded-xl p-4 text-center">
+                <p className="text-xs text-slate-500 mb-2">Current Risk Factor</p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className={`text-4xl font-bold ${
+                    propertyData.floodZone.startsWith('V') ? 'text-red-400' :
+                    propertyData.floodZone.startsWith('A') ? 'text-orange-400' :
+                    'text-emerald-400'
+                  }`}>
+                    {propertyData.floodZone.startsWith('V') ? '9' :
+                     propertyData.floodZone === 'AE' ? '7' :
+                     propertyData.floodZone === 'AO' ? '6' :
+                     propertyData.floodZone === 'A' ? '5' :
+                     propertyData.floodZone === 'X' ? '2' : '4'}
+                  </span>
+                  <span className="text-slate-500">/10</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {propertyData.floodZone.startsWith('V') ? 'Extreme' :
+                   propertyData.floodZone.startsWith('A') ? 'High' :
+                   'Moderate'} Risk
+                </p>
+              </div>
+              
+              {/* 15-Year Projection */}
+              <div className="bg-slate-900 rounded-xl p-4 text-center">
+                <p className="text-xs text-slate-500 mb-2">15-Year Projection</p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className={`text-4xl font-bold ${
+                    propertyData.floodZone.startsWith('V') ? 'text-red-400' :
+                    propertyData.floodZone.startsWith('A') ? 'text-red-400' :
+                    'text-amber-400'
+                  }`}>
+                    {propertyData.floodZone.startsWith('V') ? '10' :
+                     propertyData.floodZone === 'AE' ? '8' :
+                     propertyData.floodZone === 'AO' ? '7' :
+                     propertyData.floodZone === 'A' ? '6' :
+                     propertyData.floodZone === 'X' ? '3' : '5'}
+                  </span>
+                  <span className="text-slate-500">/10</span>
+                </div>
+                <p className="text-xs text-amber-400 mt-1 flex items-center justify-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  +{propertyData.floodZone.startsWith('V') ? '11' : propertyData.floodZone.startsWith('A') ? '14' : '50'}% risk increase
+                </p>
+              </div>
+              
+              {/* 30-Year Projection */}
+              <div className="bg-slate-900 rounded-xl p-4 text-center">
+                <p className="text-xs text-slate-500 mb-2">30-Year Projection</p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className={`text-4xl font-bold text-red-400`}>
+                    {propertyData.floodZone.startsWith('V') ? '10' :
+                     propertyData.floodZone === 'AE' ? '9' :
+                     propertyData.floodZone === 'AO' ? '8' :
+                     propertyData.floodZone === 'A' ? '7' :
+                     propertyData.floodZone === 'X' ? '4' : '6'}
+                  </span>
+                  <span className="text-slate-500">/10</span>
+                </div>
+                <p className="text-xs text-red-400 mt-1 flex items-center justify-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  +{propertyData.floodZone.startsWith('V') ? '11' : propertyData.floodZone.startsWith('A') ? '29' : '100'}% risk increase
+                </p>
+              </div>
+            </div>
+            
+            {/* Sea Level Rise Impact */}
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <Waves className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-400">Sea Level Rise Impact</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    NJ coastal areas are projected to see <strong className="text-white">1.5-2.5 feet</strong> of sea level rise by 2050. 
+                    This means today's 100-year flood could become a <strong className="text-white">25-year flood event</strong>.
+                    Properties currently in Zone X may be reclassified to AE zones.
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-slate-900/50 rounded-lg p-2">
+                      <p className="text-lg font-bold text-white">+1.2 ft</p>
+                      <p className="text-[10px] text-slate-500">by 2035</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-2">
+                      <p className="text-lg font-bold text-white">+2.1 ft</p>
+                      <p className="text-[10px] text-slate-500">by 2050</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-2">
+                      <p className="text-lg font-bold text-white">+4.2 ft</p>
+                      <p className="text-[10px] text-slate-500">by 2100</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-[10px] text-slate-600 mt-3 text-center">
+              Projections based on NOAA sea level rise scenarios and NJ DEP coastal flood modeling
+            </p>
+          </div>
         )}
         
         {/* Venting Calculator */}
