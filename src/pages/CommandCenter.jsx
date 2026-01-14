@@ -635,6 +635,64 @@ const ScoreGauge = ({ score, size = 'large' }) => {
 };
 
 // =============================================================================
+// SHORE TOWNS DATA
+// =============================================================================
+const SHORE_TOWNS = [
+  { name: 'Asbury Park', zip: '07712', county: 'Monmouth' },
+  { name: 'Atlantic City', zip: '08401', county: 'Atlantic' },
+  { name: 'Avalon', zip: '08202', county: 'Cape May' },
+  { name: 'Avon-by-the-Sea', zip: '07717', county: 'Monmouth' },
+  { name: 'Barnegat', zip: '08005', county: 'Ocean' },
+  { name: 'Barnegat Light', zip: '08006', county: 'Ocean' },
+  { name: 'Bay Head', zip: '08742', county: 'Ocean' },
+  { name: 'Beach Haven', zip: '08008', county: 'Ocean' },
+  { name: 'Belmar', zip: '07719', county: 'Monmouth' },
+  { name: 'Bradley Beach', zip: '07720', county: 'Monmouth' },
+  { name: 'Brick', zip: '08723', county: 'Ocean' },
+  { name: 'Brigantine', zip: '08203', county: 'Atlantic' },
+  { name: 'Cape May', zip: '08204', county: 'Cape May' },
+  { name: 'Cape May Point', zip: '08212', county: 'Cape May' },
+  { name: 'Deal', zip: '07723', county: 'Monmouth' },
+  { name: 'Highlands', zip: '07732', county: 'Monmouth' },
+  { name: 'Island Heights', zip: '08732', county: 'Ocean' },
+  { name: 'Keansburg', zip: '07734', county: 'Monmouth' },
+  { name: 'Lavallette', zip: '08735', county: 'Ocean' },
+  { name: 'Little Egg Harbor', zip: '08087', county: 'Ocean' },
+  { name: 'Long Beach Township', zip: '08008', county: 'Ocean' },
+  { name: 'Long Branch', zip: '07740', county: 'Monmouth' },
+  { name: 'Longport', zip: '08403', county: 'Atlantic' },
+  { name: 'Manasquan', zip: '08736', county: 'Monmouth' },
+  { name: 'Mantoloking', zip: '08738', county: 'Ocean' },
+  { name: 'Margate City', zip: '08402', county: 'Atlantic' },
+  { name: 'Monmouth Beach', zip: '07750', county: 'Monmouth' },
+  { name: 'Neptune', zip: '07753', county: 'Monmouth' },
+  { name: 'North Wildwood', zip: '08260', county: 'Cape May' },
+  { name: 'Ocean City', zip: '08226', county: 'Cape May' },
+  { name: 'Ocean Gate', zip: '08740', county: 'Ocean' },
+  { name: 'Ocean Grove', zip: '07756', county: 'Monmouth' },
+  { name: 'Pine Beach', zip: '08741', county: 'Ocean' },
+  { name: 'Point Pleasant', zip: '08742', county: 'Ocean' },
+  { name: 'Point Pleasant Beach', zip: '08742', county: 'Ocean' },
+  { name: 'Rumson', zip: '07760', county: 'Monmouth' },
+  { name: 'Sea Bright', zip: '07760', county: 'Monmouth' },
+  { name: 'Sea Girt', zip: '08750', county: 'Monmouth' },
+  { name: 'Sea Isle City', zip: '08243', county: 'Cape May' },
+  { name: 'Seaside Heights', zip: '08751', county: 'Ocean' },
+  { name: 'Seaside Park', zip: '08752', county: 'Ocean' },
+  { name: 'Ship Bottom', zip: '08008', county: 'Ocean' },
+  { name: 'Spring Lake', zip: '07762', county: 'Monmouth' },
+  { name: 'Spring Lake Heights', zip: '07762', county: 'Monmouth' },
+  { name: 'Stone Harbor', zip: '08247', county: 'Cape May' },
+  { name: 'Surf City', zip: '08008', county: 'Ocean' },
+  { name: 'Toms River', zip: '08753', county: 'Ocean' },
+  { name: 'Tuckerton', zip: '08087', county: 'Ocean' },
+  { name: 'Ventnor City', zip: '08406', county: 'Atlantic' },
+  { name: 'West Wildwood', zip: '08260', county: 'Cape May' },
+  { name: 'Wildwood', zip: '08260', county: 'Cape May' },
+  { name: 'Wildwood Crest', zip: '08260', county: 'Cape May' },
+].sort((a, b) => a.name.localeCompare(b.name));
+
+// =============================================================================
 // MAIN APP COMPONENT
 // =============================================================================
 
@@ -644,7 +702,8 @@ export default function ShoreHomeScore() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   
   // Property data
-  const [address, setAddress] = useState('');
+  const [selectedTown, setSelectedTown] = useState(null);
+  const [streetAddress, setStreetAddress] = useState('');
   const [propertyData, setPropertyData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -654,16 +713,52 @@ export default function ShoreHomeScore() {
   
   // UI state
   const [showInfo, setShowInfo] = useState(null);
+  const [townSearch, setTownSearch] = useState('');
+  const [showTownDropdown, setShowTownDropdown] = useState(false);
   
   // Legacy window calculation
   const LEGACY_WINDOW_END = new Date('2026-07-15');
   const legacyDaysLeft = Math.max(0, Math.ceil((LEGACY_WINDOW_END - new Date()) / (1000 * 60 * 60 * 24)));
   
-  // Simple lookup for manual entry (Enter key or if autocomplete not available)
-  const lookupAddress = () => {
-    if (address.trim()) {
-      lookupAddressFromPlace(address);
+  // Filter towns based on search
+  const filteredTowns = SHORE_TOWNS.filter(t => 
+    t.name.toLowerCase().includes(townSearch.toLowerCase())
+  );
+  
+  // Lookup address
+  const lookupAddress = async () => {
+    if (!selectedTown || !streetAddress.trim()) {
+      setError('Please select a town and enter your street address');
+      return;
     }
+    
+    setLoading(true);
+    setError(null);
+    
+    const fullAddress = `${streetAddress}, ${selectedTown.name}, NJ ${selectedTown.zip}`;
+    
+    try {
+      const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(fullAddress)}&zipCode=${selectedTown.zip}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setPropertyData({
+          address: data.matchedAddress || fullAddress,
+          coordinates: data.coordinates,
+          floodZone: data.floodZone,
+          bfe: data.bfe && data.bfe > 0 ? data.bfe : null,
+          zoneSubtype: data.zoneSubtype,
+          town: selectedTown,
+        });
+        setStep('assessment');
+      } else {
+        setError('Could not find that address. Please check the street address and try again.');
+      }
+    } catch (e) {
+      setError('Unable to look up address. Please try again.');
+    }
+    
+    setLoading(false);
   };
   
   // Calculate score
@@ -706,101 +801,6 @@ export default function ShoreHomeScore() {
     return total;
   }, [answers]);
 
-  // Google Places Autocomplete
-  const inputRef = React.useRef(null);
-  const [placesLoaded, setPlacesLoaded] = useState(false);
-  
-  // Initialize Google Places Autocomplete
-  useEffect(() => {
-    if (step !== 'landing') return;
-    
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-    if (!apiKey) {
-      console.log('No Google Places API key found, using manual entry');
-      return;
-    }
-    
-    // Load Google Places script if not loaded
-    if (!window.google?.maps?.places) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initPlaces`;
-      script.async = true;
-      script.defer = true;
-      
-      // Define callback
-      window.initPlaces = () => {
-        setPlacesLoaded(true);
-        initAutocomplete();
-      };
-      
-      document.head.appendChild(script);
-    } else {
-      setPlacesLoaded(true);
-      initAutocomplete();
-    }
-    
-    function initAutocomplete() {
-      if (!inputRef.current || !window.google?.maps?.places) return;
-      
-      try {
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          componentRestrictions: { country: 'us' },
-          fields: ['formatted_address', 'geometry', 'address_components'],
-          types: ['address'],
-        });
-        
-        // Bias to NJ Shore area
-        const njShoreBounds = new window.google.maps.LatLngBounds(
-          new window.google.maps.LatLng(39.3, -74.5), // SW
-          new window.google.maps.LatLng(40.5, -73.9)  // NE
-        );
-        autocomplete.setBounds(njShoreBounds);
-        
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          if (place?.formatted_address) {
-            setAddress(place.formatted_address);
-            // Auto-submit after selection
-            lookupAddressFromPlace(place.formatted_address);
-          }
-        });
-      } catch (e) {
-        console.error('Failed to init autocomplete:', e);
-      }
-    }
-    
-    return () => {
-      delete window.initPlaces;
-    };
-  }, [step]);
-  
-  const lookupAddressFromPlace = async (addr) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(addr)}&zipCode=`);
-      const data = await res.json();
-      
-      if (data.success) {
-        setPropertyData({
-          address: data.matchedAddress || addr,
-          coordinates: data.coordinates,
-          floodZone: data.floodZone,
-          bfe: data.bfe && data.bfe > 0 ? data.bfe : null,
-          zoneSubtype: data.zoneSubtype,
-        });
-        setStep('assessment');
-      } else {
-        setError(data.error || 'Could not find flood data for this address.');
-      }
-    } catch (e) {
-      setError('Unable to look up address. Please try again.');
-    }
-    
-    setLoading(false);
-  };
-
   // ===========================================
   // LANDING PAGE
   // ===========================================
@@ -831,29 +831,94 @@ export default function ShoreHomeScore() {
             transition={{ delay: 0.1 }}
             className="bg-slate-800/50 rounded-2xl border border-slate-700 p-6"
           >
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Enter your property address
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            {/* Town Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Select your town
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={selectedTown ? selectedTown.name : townSearch}
+                  onChange={(e) => {
+                    setTownSearch(e.target.value);
+                    setSelectedTown(null);
+                    setShowTownDropdown(true);
+                  }}
+                  onFocus={() => setShowTownDropdown(true)}
+                  placeholder="Search NJ Shore towns..."
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                />
+                <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                
+                {/* Town Dropdown */}
+                <AnimatePresence>
+                  {showTownDropdown && filteredTowns.length > 0 && !selectedTown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-xl max-h-64 overflow-y-auto"
+                    >
+                      {filteredTowns.slice(0, 10).map(town => (
+                        <button
+                          key={`${town.name}-${town.zip}`}
+                          onClick={() => {
+                            setSelectedTown(town);
+                            setTownSearch('');
+                            setShowTownDropdown(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-slate-700 text-white flex items-center justify-between border-b border-slate-700 last:border-0"
+                        >
+                          <span>{town.name}</span>
+                          <span className="text-xs text-slate-400">{town.county} County</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              {selectedTown && (
+                <p className="text-xs text-cyan-400 mt-2">
+                  ✓ {selectedTown.name}, NJ {selectedTown.zip} ({selectedTown.county} County)
+                </p>
+              )}
+            </div>
+            
+            {/* Street Address */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Street address
+              </label>
               <input
-                ref={inputRef}
                 type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && lookupAddress()}
-                placeholder="Start typing your address..."
-                className="w-full pl-12 pr-4 py-4 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none text-lg"
-                autoComplete="off"
+                placeholder="123 Ocean Ave"
+                disabled={!selectedTown}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             
-            {loading && (
-              <div className="flex items-center gap-2 mt-4 text-cyan-400">
-                <Loader className="w-5 h-5 animate-spin" />
-                <span>Looking up flood data...</span>
-              </div>
-            )}
+            {/* Submit Button */}
+            <button
+              onClick={lookupAddress}
+              disabled={loading || !selectedTown || !streetAddress.trim()}
+              className="w-full px-6 py-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Looking up flood data...
+                </>
+              ) : (
+                <>
+                  <Search className="w-5 h-5" />
+                  Check My Property
+                </>
+              )}
+            </button>
             
             {error && (
               <motion.div
@@ -862,15 +927,7 @@ export default function ShoreHomeScore() {
                 className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg"
               >
                 <p className="text-red-400 text-sm">{error}</p>
-                <p className="text-slate-400 text-xs mt-1">Try including the full address with city and state (e.g., "123 Ocean Ave, Belmar, NJ")</p>
               </motion.div>
-            )}
-            
-            {!loading && !error && (
-              <p className="text-xs text-slate-500 mt-4 flex items-center gap-2">
-                <Search className="w-4 h-4" />
-                We cover the entire New Jersey Shore from Sandy Hook to Cape May
-              </p>
             )}
           </motion.div>
           
@@ -898,7 +955,7 @@ export default function ShoreHomeScore() {
             transition={{ delay: 0.3 }}
             className="text-center text-slate-600 text-xs mt-8"
           >
-            Powered by FEMA National Flood Hazard Layer
+            Covering 50+ NJ Shore communities • Powered by FEMA NFHL
           </motion.p>
         </div>
       </div>

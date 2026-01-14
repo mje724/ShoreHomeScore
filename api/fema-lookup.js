@@ -24,19 +24,19 @@ export default async function handler(req) {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
   
-  // Validate inputs
-  if (!address || !zipCode) {
+  // Validate inputs - only address is required
+  if (!address) {
     return new Response(
-      JSON.stringify({ error: 'Address and zipCode are required' }),
+      JSON.stringify({ error: 'Address is required' }),
       { status: 400, headers: corsHeaders }
     );
   }
   
   try {
     // Build full address - if address already contains state/zip, use as-is
-    // Otherwise append the zipCode
+    // Otherwise append NJ and zipCode if provided
     const hasZipOrState = /\d{5}|,\s*NJ/i.test(address);
-    const fullAddress = hasZipOrState ? address : `${address}, NJ ${zipCode}`;
+    const fullAddress = hasZipOrState ? address : (zipCode ? `${address}, NJ ${zipCode}` : address);
     
     // Step 1: Geocode the address using Census Bureau
     const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
