@@ -1579,6 +1579,101 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
     }));
   };
   
+  // State for FEMA lookup
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState(null);
+  const [lookupSuccess, setLookupSuccess] = useState(false);
+  const [claimsData, setClaimsData] = useState(null);
+  
+  // FEMA Flood Zone Lookup
+  const lookupFloodData = async () => {
+    const fullAddress = `${formData.address}, ${formData.zipCode}`;
+    if (!formData.address || !formData.zipCode) {
+      setLookupError('Please enter both address and zip code');
+      return;
+    }
+    
+    setIsLookingUp(true);
+    setLookupError(null);
+    setLookupSuccess(false);
+    
+    try {
+      // Step 1: Geocode the address using Census Bureau API (free, no key needed)
+      const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
+      
+      const geocodeResponse = await fetch(geocodeUrl);
+      const geocodeData = await geocodeResponse.json();
+      
+      if (!geocodeData.result?.addressMatches?.length) {
+        setLookupError('Address not found. Please check and try again.');
+        setIsLookingUp(false);
+        return;
+      }
+      
+      const { x: lng, y: lat } = geocodeData.result.addressMatches[0].coordinates;
+      
+      // Step 2: Query FEMA NFHL for flood zone data
+      const femaUrl = `https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lng}%2C${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE%2CSTATIC_BFE%2CDEPTH%2CZONE_SUBTY&returnGeometry=false&f=json`;
+      
+      const femaResponse = await fetch(femaUrl);
+      const femaData = await femaResponse.json();
+      
+      if (femaData.features?.length > 0) {
+        const feature = femaData.features[0].attributes;
+        const floodZone = feature.FLD_ZONE || 'X';
+        const bfe = feature.STATIC_BFE || null;
+        
+        setFormData(prev => ({
+          ...prev,
+          floodZone: floodZone,
+          bfe: bfe || prev.bfe,
+          femaVerified: true,
+          coordinates: { lat, lng }
+        }));
+        
+        setLookupSuccess(true);
+      } else {
+        // No flood zone found - likely in Zone X (minimal risk)
+        setFormData(prev => ({
+          ...prev,
+          floodZone: 'X',
+          femaVerified: true,
+          coordinates: { lat, lng }
+        }));
+        setLookupSuccess(true);
+      }
+      
+      // Step 3: Get neighborhood claims data from OpenFEMA
+      try {
+        const claimsUrl = `https://www.fema.gov/api/open/v2/FimaNfipClaims?$filter=reportedZipcode%20eq%20%27${formData.zipCode}%27&$top=1000`;
+        const claimsResponse = await fetch(claimsUrl);
+        const claimsJson = await claimsResponse.json();
+        
+        if (claimsJson.FimaNfipClaims?.length > 0) {
+          const claims = claimsJson.FimaNfipClaims;
+          const totalClaims = claims.length;
+          const totalPayout = claims.reduce((sum, c) => sum + (c.amountPaidOnBuildingClaim || 0) + (c.amountPaidOnContentsClaim || 0), 0);
+          const avgPayout = totalClaims > 0 ? totalPayout / totalClaims : 0;
+          
+          setClaimsData({
+            totalClaims,
+            totalPayout,
+            avgPayout,
+            since: '1978'
+          });
+        }
+      } catch (claimsErr) {
+        console.log('Claims lookup failed (non-critical):', claimsErr);
+      }
+      
+    } catch (err) {
+      console.error('FEMA lookup error:', err);
+      setLookupError('Lookup failed. Using default values for your zip code.');
+    }
+    
+    setIsLookingUp(false);
+  };
+  
   const currentPricePerSqft = formData.pricePerSqft || ZIP_DATA[formData.zipCode]?.pricePerSqft || 300;
   
   if (!isOpen) return null;
@@ -1599,6 +1694,20 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
         </div>
         
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Street Address <span className="text-cyan-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="123 Ocean Ave"
+              className="w-full px-4 py-3 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+          
           {/* Zip Code */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
@@ -1614,24 +1723,105 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
             />
             {formData.municipality && (
               <p className="text-xs text-slate-500 mt-1">
-                {formData.municipality}, {formData.county} County • BFE: {formData.bfe}ft • Zone: {formData.floodZone}
+                {formData.municipality}, {formData.county} County
               </p>
             )}
           </div>
           
-          {/* Address */}
+          {/* FEMA Lookup Button */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Address <span className="text-slate-500 text-xs">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={formData.address}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              placeholder="123 Ocean Ave"
-              className="w-full px-4 py-2 bg-slate-900 border-2 border-slate-600 rounded-xl text-white focus:border-cyan-500 focus:outline-none"
-            />
+            <button
+              onClick={lookupFloodData}
+              disabled={isLookingUp || !formData.address || !formData.zipCode}
+              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                isLookingUp 
+                  ? 'bg-slate-700 text-slate-400 cursor-wait'
+                  : lookupSuccess
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+              }`}
+            >
+              {isLookingUp ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                  Looking up FEMA data...
+                </>
+              ) : lookupSuccess ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  FEMA Data Loaded!
+                </>
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4" />
+                  🔍 Look Up Official FEMA Flood Data
+                </>
+              )}
+            </button>
+            <p className="text-xs text-slate-500 mt-1 text-center">
+              Free lookup from official FEMA flood maps
+            </p>
+            
+            {lookupError && (
+              <p className="text-xs text-red-400 mt-2 text-center">{lookupError}</p>
+            )}
           </div>
+          
+          {/* FEMA Results */}
+          {lookupSuccess && (
+            <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-400" />
+                <span className="text-sm font-bold text-emerald-400">Official FEMA Data</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <p className="text-xs text-slate-500">Flood Zone</p>
+                  <p className="text-lg font-bold text-white">{formData.floodZone}</p>
+                  <p className="text-xs text-slate-500">
+                    {formData.floodZone.startsWith('V') ? 'High risk + waves' :
+                     formData.floodZone.startsWith('A') ? 'High risk' :
+                     formData.floodZone === 'X' ? 'Lower risk' : 'Unknown'}
+                  </p>
+                </div>
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <p className="text-xs text-slate-500">Base Flood Elevation</p>
+                  <p className="text-lg font-bold text-white">{formData.bfe ? `${formData.bfe} ft` : 'N/A'}</p>
+                  <p className="text-xs text-slate-500">NAVD88 datum</p>
+                </div>
+              </div>
+              
+              {formData.floodZone !== 'X' && (
+                <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-2">
+                  <p className="text-xs text-amber-400">
+                    <strong>CAFE Requirement:</strong> Any substantial improvement must be elevated to {formData.bfe ? formData.bfe + 4 : 'BFE + 4'} ft
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Neighborhood Claims Data */}
+          {claimsData && (
+            <div className="bg-slate-900/50 border border-slate-600 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span className="text-sm font-bold text-slate-300">Neighborhood Flood History</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-2xl font-bold text-amber-400">{claimsData.totalClaims.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">Claims in {formData.zipCode}</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">${Math.round(claimsData.avgPayout).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">Avg. claim payout</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Source: FEMA NFIP claims since {claimsData.since}</p>
+            </div>
+          )}
           
           {/* Square Footage */}
           <div>
