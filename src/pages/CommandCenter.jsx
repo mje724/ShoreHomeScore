@@ -2161,6 +2161,7 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
   const [lookupError, setLookupError] = useState(null);
   const [lookupSuccess, setLookupSuccess] = useState(false);
   const [claimsData, setClaimsData] = useState(null);
+  const [propertySuggestions, setPropertySuggestions] = useState(null);
   
   // FEMA Flood Zone Lookup - uses our serverless API to avoid CORS
   const lookupFloodData = async () => {
@@ -2174,33 +2175,48 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
     setLookupSuccess(false);
     
     try {
-      // Call our serverless API endpoint
-      const apiUrl = `/api/fema-lookup?address=${encodeURIComponent(formData.address)}&zipCode=${encodeURIComponent(formData.zipCode)}`;
+      // Call FEMA lookup API
+      const femaUrl = `/api/fema-lookup?address=${encodeURIComponent(formData.address)}&zipCode=${encodeURIComponent(formData.zipCode)}`;
+      const femaResponse = await fetch(femaUrl);
+      const femaData = await femaResponse.json();
       
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setLookupError(data.error || 'Lookup failed. Try adding city name to address.');
+      if (!femaResponse.ok) {
+        setLookupError(femaData.error || 'Lookup failed. Try adding city name to address.');
         setIsLookingUp(false);
         return;
       }
       
-      // Update form with FEMA data
+      // Also fetch property estimates
+      let propertyEstimates = null;
+      try {
+        const propertyUrl = `/api/property-lookup?address=${encodeURIComponent(formData.address)}&zipCode=${encodeURIComponent(formData.zipCode)}`;
+        const propertyResponse = await fetch(propertyUrl);
+        if (propertyResponse.ok) {
+          const propertyData = await propertyResponse.json();
+          propertyEstimates = propertyData.estimates;
+          setPropertySuggestions(propertyData.propertyData?.areaSuggestions || null);
+        }
+      } catch (propErr) {
+        console.log('Property lookup failed (non-critical):', propErr);
+      }
+      
+      // Update form with FEMA data and estimates
       setFormData(prev => ({
         ...prev,
-        floodZone: data.floodZone || 'X',
-        bfe: data.bfe || prev.bfe,
+        floodZone: femaData.floodZone || 'X',
+        bfe: femaData.bfe || prev.bfe,
         femaVerified: true,
-        coordinates: data.coordinates
+        coordinates: femaData.coordinates,
+        // Only update price per sqft if we got estimates and user hasn't set one
+        pricePerSqft: propertyEstimates?.pricePerSqft || prev.pricePerSqft
       }));
       
       // Set claims data if available
-      if (data.claims) {
+      if (femaData.claims) {
         setClaimsData({
-          totalClaims: data.claims.totalClaims,
-          totalPayout: data.claims.totalPayout,
-          avgPayout: data.claims.avgPayout,
+          totalClaims: femaData.claims.totalClaims,
+          totalPayout: femaData.claims.totalPayout,
+          avgPayout: femaData.claims.avgPayout,
           since: '1978'
         });
       }
@@ -2213,6 +2229,15 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
     }
     
     setIsLookingUp(false);
+  };
+  
+  // Apply suggestions to form
+  const applySuggestion = (field, value) => {
+    if (field === 'sqft') {
+      handleSqFtChange(value);
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
   
   const currentPricePerSqft = formData.pricePerSqft || ZIP_DATA[formData.zipCode]?.pricePerSqft || 300;
@@ -2361,6 +2386,44 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
                 </div>
               </div>
               <p className="text-xs text-slate-500 mt-2">Source: FEMA NFIP claims since {claimsData.since}</p>
+            </div>
+          )}
+          
+          {/* Property Suggestions from Area Data */}
+          {propertySuggestions && lookupSuccess && (
+            <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Home className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm font-bold text-cyan-400">Area Averages for {formData.zipCode}</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">Click to auto-fill if you don't know your exact values:</p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => applySuggestion('sqft', propertySuggestions.avgSqft)}
+                  className="bg-slate-900/50 border border-slate-600 hover:border-cyan-500 rounded-lg p-2 text-center transition-colors"
+                >
+                  <p className="text-lg font-bold text-white">{propertySuggestions.avgSqft?.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-500">Avg Sq Ft</p>
+                </button>
+                <button
+                  onClick={() => {
+                    const estimatedValue = propertySuggestions.avgSqft * propertySuggestions.pricePerSqft;
+                    applySuggestion('homeValue', estimatedValue);
+                  }}
+                  className="bg-slate-900/50 border border-slate-600 hover:border-cyan-500 rounded-lg p-2 text-center transition-colors"
+                >
+                  <p className="text-lg font-bold text-white">${(propertySuggestions.avgValue / 1000).toFixed(0)}K</p>
+                  <p className="text-[10px] text-slate-500">Median Value</p>
+                </button>
+                <button
+                  onClick={() => applySuggestion('pricePerSqft', propertySuggestions.pricePerSqft)}
+                  className="bg-slate-900/50 border border-slate-600 hover:border-cyan-500 rounded-lg p-2 text-center transition-colors"
+                >
+                  <p className="text-lg font-bold text-white">${propertySuggestions.pricePerSqft}</p>
+                  <p className="text-[10px] text-slate-500">$/Sq Ft</p>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-600 mt-2 text-center">Based on recent sales in your area</p>
             </div>
           )}
           
