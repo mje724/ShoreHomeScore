@@ -659,10 +659,10 @@ export default function ShoreHomeScore() {
   const LEGACY_WINDOW_END = new Date('2026-07-15');
   const legacyDaysLeft = Math.max(0, Math.ceil((LEGACY_WINDOW_END - new Date()) / (1000 * 60 * 60 * 24)));
   
-  // Simple lookup for manual entry (fallback)
+  // Simple lookup for manual entry (Enter key or if autocomplete not available)
   const lookupAddress = () => {
     if (address.trim()) {
-      lookupAddressWithPlace(null);
+      lookupAddressFromPlace(address);
     }
   };
   
@@ -707,60 +707,76 @@ export default function ShoreHomeScore() {
   }, [answers]);
 
   // Google Places Autocomplete
-  const autocompleteRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  const [placesLoaded, setPlacesLoaded] = useState(false);
   
   // Initialize Google Places Autocomplete
   useEffect(() => {
     if (step !== 'landing') return;
     
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      console.log('No Google Places API key found, using manual entry');
+      return;
+    }
+    
     // Load Google Places script if not loaded
-    if (!window.google) {
+    if (!window.google?.maps?.places) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initPlaces`;
       script.async = true;
-      script.onload = initAutocomplete;
+      script.defer = true;
+      
+      // Define callback
+      window.initPlaces = () => {
+        setPlacesLoaded(true);
+        initAutocomplete();
+      };
+      
       document.head.appendChild(script);
     } else {
+      setPlacesLoaded(true);
       initAutocomplete();
     }
     
     function initAutocomplete() {
-      if (!inputRef.current || !window.google) return;
+      if (!inputRef.current || !window.google?.maps?.places) return;
       
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: 'us' },
-        fields: ['formatted_address', 'geometry', 'address_components'],
-        types: ['address'],
-      });
-      
-      // Bias to NJ Shore area
-      const njShoreBounds = new window.google.maps.LatLngBounds(
-        new window.google.maps.LatLng(39.3, -74.5), // SW
-        new window.google.maps.LatLng(40.5, -73.9)  // NE
-      );
-      autocompleteRef.current.setBounds(njShoreBounds);
-      
-      autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+          componentRestrictions: { country: 'us' },
+          fields: ['formatted_address', 'geometry', 'address_components'],
+          types: ['address'],
+        });
+        
+        // Bias to NJ Shore area
+        const njShoreBounds = new window.google.maps.LatLngBounds(
+          new window.google.maps.LatLng(39.3, -74.5), // SW
+          new window.google.maps.LatLng(40.5, -73.9)  // NE
+        );
+        autocomplete.setBounds(njShoreBounds);
+        
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (place?.formatted_address) {
+            setAddress(place.formatted_address);
+            // Auto-submit after selection
+            lookupAddressFromPlace(place.formatted_address);
+          }
+        });
+      } catch (e) {
+        console.error('Failed to init autocomplete:', e);
+      }
     }
+    
+    return () => {
+      delete window.initPlaces;
+    };
   }, [step]);
   
-  const handlePlaceSelect = () => {
-    const place = autocompleteRef.current?.getPlace();
-    if (place?.formatted_address) {
-      setAddress(place.formatted_address);
-      // Auto-submit after selection
-      setTimeout(() => {
-        lookupAddressWithPlace(place);
-      }, 100);
-    }
-  };
-  
-  const lookupAddressWithPlace = async (place) => {
+  const lookupAddressFromPlace = async (addr) => {
     setLoading(true);
     setError(null);
-    
-    const addr = place?.formatted_address || address;
     
     try {
       const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(addr)}&zipCode=`);
@@ -776,7 +792,7 @@ export default function ShoreHomeScore() {
         });
         setStep('assessment');
       } else {
-        setError(data.error || 'Could not find flood data for this address. Please try a different address.');
+        setError(data.error || 'Could not find flood data for this address.');
       }
     } catch (e) {
       setError('Unable to look up address. Please try again.');
