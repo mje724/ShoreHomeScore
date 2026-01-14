@@ -6,7 +6,7 @@ import {
   X, HelpCircle, ArrowRight, ArrowLeft, Info, Clock, Target,
   Zap, TrendingUp, ExternalLink, Building, Search,
   Check, AlertCircle, Loader, Thermometer, TreePine, Scale,
-  Cpu, Waves, Umbrella
+  Cpu, Waves, Umbrella, Lock, Mail, Download
 } from 'lucide-react';
 
 // =============================================================================
@@ -336,6 +336,12 @@ export default function ShoreHomeScore() {
   // All field values stored as object
   const [values, setValues] = useState({});
   
+  // Email/unlock state
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [email, setEmail] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  
   // UI state
   const [showTownSearch, setShowTownSearch] = useState(false);
   const [townSearchQuery, setTownSearchQuery] = useState('');
@@ -386,15 +392,68 @@ export default function ShoreHomeScore() {
     return CATEGORIES.reduce((sum, cat) => sum + cat.maxPoints, 0);
   }, []);
 
-  // Toggle category open/closed
+  // Toggle category open/closed - requires unlock
   const toggleCategory = (catId) => {
+    if (!isUnlocked) {
+      setShowEmailModal(true);
+      return;
+    }
     setOpenCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
-  // Update a value
+  // Update a value - requires unlock
   const setValue = (id, val) => {
+    if (!isUnlocked) {
+      setShowEmailModal(true);
+      return;
+    }
     setValues(prev => ({ ...prev, [id]: val }));
   };
+  
+  // Handle email submit - sends to our API
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setEmailError('Please enter your email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email');
+      return;
+    }
+    
+    // Send to our API (logs to Vercel dashboard)
+    try {
+      await fetch('/api/collect-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          town: town?.name || 'Unknown',
+          floodZone: floodZone,
+        }),
+      });
+    } catch (err) {
+      // Don't block user if API fails
+      console.error('Email API error:', err);
+    }
+    
+    // Always unlock (don't lose user even if API fails)
+    localStorage.setItem('shs_unlocked', 'true');
+    localStorage.setItem('shs_email', email);
+    setIsUnlocked(true);
+    setShowEmailModal(false);
+    setEmailError('');
+  };
+  
+  // Check localStorage on mount for returning users
+  React.useEffect(() => {
+    const wasUnlocked = localStorage.getItem('shs_unlocked');
+    if (wasUnlocked === 'true') {
+      setIsUnlocked(true);
+      setEmail(localStorage.getItem('shs_email') || '');
+    }
+  }, []);
 
   // Address lookup
   const lookupAddress = async () => {
@@ -595,6 +654,33 @@ export default function ShoreHomeScore() {
           </div>
         )}
 
+        {/* Unlock Teaser - shows when locked */}
+        {town && !isUnlocked && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 rounded-xl p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/20 rounded-lg">
+                  <Lock className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">Unlock Your Full Assessment</p>
+                  <p className="text-sm text-slate-400">Enter your email to customize your resilience score</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-medium text-sm"
+              >
+                Unlock Free
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Categories */}
         {town && CATEGORIES.map(cat => {
           const colors = COLORS[cat.color];
@@ -604,7 +690,7 @@ export default function ShoreHomeScore() {
           const Icon = cat.icon;
 
           return (
-            <div key={cat.id} className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <div key={cat.id} className={`bg-slate-800 rounded-xl border border-slate-700 overflow-hidden ${!isUnlocked ? 'opacity-80' : ''}`}>
               {/* Category Header */}
               <button
                 onClick={() => toggleCategory(cat.id)}
@@ -621,7 +707,11 @@ export default function ShoreHomeScore() {
                   <p className={`text-xl font-bold ${colors.text}`}>{catScore.earned}/{catScore.max}</p>
                   <p className="text-xs text-slate-400">points</p>
                 </div>
-                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                {!isUnlocked ? (
+                  <Lock className="w-5 h-5 text-slate-500" />
+                ) : (
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                )}
               </button>
 
               {/* Progress Bar */}
@@ -639,7 +729,7 @@ export default function ShoreHomeScore() {
 
               {/* Items */}
               <AnimatePresence>
-                {isOpen && (
+                {isOpen && isUnlocked && (
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: 'auto' }}
@@ -1170,6 +1260,102 @@ export default function ShoreHomeScore() {
           <p>{item.helpText}</p>
         </InfoPopup>
       ))}
+      
+      {/* Email Unlock Modal */}
+      <AnimatePresence>
+        {showEmailModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowEmailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-800 rounded-2xl border border-slate-700 max-w-md w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-cyan-500/20 rounded-full">
+                    <Shield className="w-8 h-8 text-cyan-400" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white text-center mb-2">Unlock Your Full Assessment</h3>
+                <p className="text-slate-400 text-center text-sm mb-6">
+                  Enter your email to customize your resilience score and see how each improvement impacts your property.
+                </p>
+                
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                  <div>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                        placeholder="your@email.com"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-medium transition-colors"
+                  >
+                    Unlock Free Assessment
+                  </button>
+                </form>
+                
+                <div className="mt-6 space-y-2">
+                  <p className="text-xs text-slate-500 text-center">You'll get access to:</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>All 7 assessment categories</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Real-time score updates</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>PDF report download</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Deadline reminders</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-slate-500 text-center mt-4">
+                  No spam, ever. Just flood protection tips.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* PDF Download Button - shows when unlocked */}
+      {isUnlocked && town && (
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-6 right-6 px-4 py-3 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-medium shadow-lg flex items-center gap-2 z-30"
+          onClick={() => alert('PDF generation coming soon!')}
+        >
+          <Download className="w-5 h-5" />
+          Download PDF
+        </motion.button>
+      )}
     </div>
   );
 }
