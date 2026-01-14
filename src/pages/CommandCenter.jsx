@@ -7,7 +7,7 @@ import {
   Waves, Star, Sparkles, Check, Bell, Calendar, Anchor,
   ArrowUp, Gauge, Battery, Eye, Lock, Unlock, Book,
   AlertCircle, Target, Building, Settings, Info,
-  ThermometerSun, Percent, CloudRain, Menu
+  ThermometerSun, Percent, CloudRain, Menu, Search
 } from 'lucide-react';
 
 // =============================================================================
@@ -79,40 +79,126 @@ const TOWNS_BY_COUNTY = SHORE_TOWNS.reduce((acc, town) => {
   return acc;
 }, {});
 
-// Glossary terms
+// Glossary
 const GLOSSARY = {
   'BFE': { term: 'Base Flood Elevation', definition: 'The elevation at which there is a 1% chance of flooding in any given year. This is the baseline for measuring flood risk and insurance rates.' },
-  'CAFE': { term: 'Coastal A Flood Elevation', definition: 'New Jersey requires new construction and substantial improvements to be built to BFE + 4 feet (freeboard) in flood zones. This is the CAFE standard.' },
-  'VE Zone': { term: 'Velocity Zone', definition: 'High-risk coastal flood zone where wave action is expected. Stricter building requirements apply, including breakaway walls below BFE.' },
-  'AE Zone': { term: 'A Elevation Zone', definition: 'High-risk flood zone where BFE has been determined. Flood insurance is required for federally-backed mortgages.' },
-  'X Zone': { term: 'Minimal Risk Zone', definition: 'Area of moderate to low flood risk. Flood insurance is not required but recommended.' },
-  '50% Rule': { term: 'Substantial Improvement Rule', definition: 'If cumulative improvements exceed 50% of the structure\'s market value within any 10-year period, the entire structure must be brought to current code (CAFE).' },
-  'Elevation Certificate': { term: 'Elevation Certificate (EC)', definition: 'Official document prepared by a surveyor showing your structure\'s elevation relative to BFE. Required for accurate flood insurance rating.' },
-  'Freeboard': { term: 'Freeboard', definition: 'Additional height above BFE required by local codes. NJ CAFE requires 4 feet of freeboard.' },
-  'NFIP': { term: 'National Flood Insurance Program', definition: 'Federal program providing flood insurance to property owners. Maximum coverage is $250K for structure, $100K for contents.' },
-  'Flood Vents': { term: 'Flood Vents', definition: 'Openings in foundation walls that allow floodwater to flow through enclosed areas, equalizing pressure and preventing structural damage.' },
-  'Breakaway Walls': { term: 'Breakaway Walls', definition: 'Walls designed to collapse under flood forces without damaging the main structure. Required in VE zones below BFE.' },
-  'Risk Rating 2.0': { term: 'Risk Rating 2.0', definition: 'FEMA\'s new flood insurance pricing methodology that considers more variables including flood frequency, distance to water, and replacement cost.' },
-  'ICC': { term: 'Increased Cost of Compliance', definition: 'Up to $30,000 of NFIP coverage to help bring a flood-damaged building up to current codes.' },
-  'CRS': { term: 'Community Rating System', definition: 'FEMA program that rewards communities for exceeding minimum floodplain management standards. Can provide 5-45% insurance discounts.' },
-  'Substantial Damage': { term: 'Substantial Damage', definition: 'When repair costs exceed 50% of market value. Triggers requirement to bring entire structure to current code.' },
+  'CAFE': { term: 'Coastal A Flood Elevation', definition: 'New Jersey requires new construction and substantial improvements to be built to BFE + 4 feet (freeboard) in flood zones.' },
+  'VE Zone': { term: 'Velocity Zone', definition: 'High-risk coastal flood zone where wave action is expected. Stricter building requirements apply.' },
+  'AE Zone': { term: 'A Elevation Zone', definition: 'High-risk flood zone where BFE has been determined. Flood insurance required for federally-backed mortgages.' },
+  '50% Rule': { term: 'Substantial Improvement Rule', definition: 'If improvements exceed 50% of structure value within 10 years, entire structure must meet current code.' },
+  'Elevation Certificate': { term: 'Elevation Certificate (EC)', definition: 'Official document showing your structure\'s elevation relative to BFE.' },
+  'NFIP': { term: 'National Flood Insurance Program', definition: 'Federal flood insurance program. Max coverage: $250K structure, $100K contents.' },
+  'Flood Vents': { term: 'Flood Vents', definition: 'Openings allowing floodwater to flow through enclosed areas, equalizing pressure.' },
+  'Breakaway Walls': { term: 'Breakaway Walls', definition: 'Walls designed to collapse under flood forces without damaging main structure.' },
+  'Risk Rating 2.0': { term: 'Risk Rating 2.0', definition: 'FEMA\'s new pricing methodology considering flood frequency, distance to water, replacement cost.' },
 };
 
-// Constants
+// Insurance Savings Data - Based on typical NFIP and private insurer discount patterns
+// Source: FEMA guidance, industry standards - these are estimates, actual savings vary by policy
+const SAVINGS_DATA = {
+  elevationCert: { savings: 500, note: 'Allows accurate rating vs worst-case assumption' },
+  elevationAbove4: { savings: 1200, note: 'Significant premium reduction for freeboard' },
+  elevationAbove2: { savings: 800, note: 'Premium reduction for elevation above BFE' },
+  foundationPiles: { savings: 600, note: 'Preferred foundation type for flood zones' },
+  foundationPiers: { savings: 400, note: 'Better than slab for flood zones' },
+  floodVents: { savings: 300, note: 'Required for enclosures below BFE' },
+  breakawayWalls: { savings: 200, note: 'Required in VE zones' },
+  roofMetal: { savings: 600, note: 'Wind mitigation credit' },
+  roofDeck: { savings: 400, note: 'Secondary water barrier credit' },
+  windowsImpact: { savings: 500, note: 'Opening protection credit' },
+  windowsShutters: { savings: 300, note: 'Opening protection credit' },
+  garageDoor: { savings: 200, note: 'Wind mitigation credit' },
+  waterShutoff: { savings: 200, note: 'Some insurers offer smart home discount' },
+};
+
 const CAFE_ELEVATION = 4;
 const LEGACY_WINDOW_END = new Date('2026-07-15');
 const STORM_SEASON_START = new Date('2026-06-01');
 
 // =============================================================================
+// SCORE GAUGE COMPONENT (Credit Score Style)
+// =============================================================================
+const ResilienceGauge = ({ score, size = 'large' }) => {
+  const sizes = {
+    small: { width: 80, height: 50, stroke: 8, fontSize: 'text-lg' },
+    medium: { width: 140, height: 85, stroke: 12, fontSize: 'text-3xl' },
+    large: { width: 220, height: 130, stroke: 16, fontSize: 'text-5xl' },
+  };
+  const s = sizes[size];
+  
+  const getColor = (score) => {
+    if (score >= 80) return { color: '#10b981', label: 'Excellent', bg: 'from-emerald-500/20' };
+    if (score >= 60) return { color: '#22d3ee', label: 'Good', bg: 'from-cyan-500/20' };
+    if (score >= 40) return { color: '#f59e0b', label: 'Fair', bg: 'from-amber-500/20' };
+    return { color: '#ef4444', label: 'Needs Work', bg: 'from-red-500/20' };
+  };
+  
+  const { color, label, bg } = getColor(score);
+  const radius = (s.width - s.stroke) / 2;
+  const circumference = Math.PI * radius;
+  const progress = (score / 100) * circumference;
+  
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={s.width} height={s.height} className="overflow-visible">
+        {/* Background arc */}
+        <path
+          d={`M ${s.stroke/2} ${s.height} A ${radius} ${radius} 0 0 1 ${s.width - s.stroke/2} ${s.height}`}
+          fill="none"
+          stroke="#1e293b"
+          strokeWidth={s.stroke}
+          strokeLinecap="round"
+        />
+        {/* Progress arc */}
+        <motion.path
+          d={`M ${s.stroke/2} ${s.height} A ${radius} ${radius} 0 0 1 ${s.width - s.stroke/2} ${s.height}`}
+          fill="none"
+          stroke={color}
+          strokeWidth={s.stroke}
+          strokeLinecap="round"
+          initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: circumference - progress }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        />
+        {/* Score text */}
+        <text
+          x={s.width / 2}
+          y={s.height - 10}
+          textAnchor="middle"
+          className={`${s.fontSize} font-bold fill-white`}
+        >
+          {score}
+        </text>
+      </svg>
+      {size !== 'small' && (
+        <div className="text-center mt-2">
+          <p className="text-sm font-medium" style={{ color }}>{label}</p>
+          <p className="text-xs text-slate-500">Resilience Score</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Mini score for nav
+const MiniScore = ({ score }) => {
+  const color = score >= 80 ? '#10b981' : score >= 60 ? '#22d3ee' : score >= 40 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 rounded-full border border-slate-600">
+      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+      <span className="text-sm font-bold text-white">{score}</span>
+    </div>
+  );
+};
+
+// =============================================================================
 // GLOSSARY MODAL
 // =============================================================================
 const GlossaryModal = ({ isOpen, onClose }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredTerms = Object.entries(GLOSSARY).filter(([key, value]) =>
-    key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    value.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    value.definition.toLowerCase().includes(searchTerm.toLowerCase())
+  const [search, setSearch] = useState('');
+  const filtered = Object.entries(GLOSSARY).filter(([k, v]) =>
+    k.toLowerCase().includes(search.toLowerCase()) ||
+    v.term.toLowerCase().includes(search.toLowerCase())
   );
   
   if (!isOpen) return null;
@@ -134,19 +220,17 @@ const GlossaryModal = ({ isOpen, onClose }) => {
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
-        
         <div className="p-4 border-b border-slate-700">
           <input
             type="text"
             placeholder="Search terms..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500"
           />
         </div>
-        
-        <div className="overflow-y-auto max-h-[60vh] p-4 space-y-4">
-          {filteredTerms.map(([key, { term, definition }]) => (
+        <div className="overflow-y-auto max-h-[60vh] p-4 space-y-3">
+          {filtered.map(([key, { term, definition }]) => (
             <div key={key} className="bg-slate-900/50 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs font-bold rounded">{key}</span>
@@ -162,186 +246,165 @@ const GlossaryModal = ({ isOpen, onClose }) => {
 };
 
 // =============================================================================
-// PDF REPORT GENERATOR
+// PDF REPORT
 // =============================================================================
-const generatePDFReport = (town, data, score, savings) => {
-  const reportHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>ShoreHomeScore Report - ${town.name}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 40px; }
-    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #334155; }
-    .header h1 { font-size: 28px; color: #22d3ee; margin-bottom: 8px; }
-    .header p { color: #94a3b8; }
-    .score-section { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; }
-    .score-box { text-align: center; padding: 20px 40px; background: #1e293b; border-radius: 16px; }
-    .score-box .value { font-size: 48px; font-weight: bold; }
-    .score-box .label { color: #94a3b8; font-size: 14px; margin-top: 4px; }
-    .score-box.score .value { color: ${score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'}; }
-    .score-box.savings .value { color: #10b981; }
-    .section { background: #1e293b; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
-    .section h2 { color: #22d3ee; font-size: 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .section h2::before { content: ''; width: 4px; height: 20px; background: #22d3ee; border-radius: 2px; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .item { background: #0f172a; padding: 12px 16px; border-radius: 8px; }
-    .item .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; }
-    .item .value { color: #fff; font-size: 18px; font-weight: 600; margin-top: 4px; }
-    .checklist { list-style: none; }
-    .checklist li { padding: 8px 0; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
-    .checklist li:last-child { border-bottom: none; }
-    .check { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-    .check.yes { background: #10b981; color: white; }
-    .check.no { background: #334155; color: #64748b; }
-    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #334155; color: #64748b; font-size: 12px; }
-    @media print { body { background: white; color: #1e293b; } .section, .score-box { background: #f1f5f9; } .item { background: #e2e8f0; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🏠 ShoreHomeScore Report</h1>
-    <p>${town.name}, ${town.county} County, NJ ${town.zip}</p>
-    <p style="margin-top: 8px; font-size: 12px;">Generated ${new Date().toLocaleDateString()}</p>
-  </div>
+const generatePDF = (property, town, data, score, savings) => {
+  const html = `<!DOCTYPE html>
+<html><head><title>ShoreHomeScore Report</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:40px}
+.header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #334155}
+.header h1{font-size:24px;color:#22d3ee}
+.address{font-size:14px;color:#94a3b8;margin-top:8px}
+.score-section{display:flex;justify-content:center;gap:40px;margin:30px 0}
+.score-box{text-align:center;padding:20px 40px;background:#1e293b;border-radius:16px}
+.score-box .value{font-size:48px;font-weight:bold}
+.score-box .label{color:#94a3b8;font-size:12px;margin-top:4px}
+.section{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px}
+.section h2{color:#22d3ee;font-size:16px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.item{background:#0f172a;padding:12px;border-radius:8px}
+.item .label{color:#94a3b8;font-size:11px;text-transform:uppercase}
+.item .value{color:#fff;font-size:16px;font-weight:600}
+.checklist{list-style:none}
+.checklist li{padding:8px 0;border-bottom:1px solid #334155;display:flex;justify-content:space-between}
+.check{color:#10b981}.nocheck{color:#64748b}
+.footer{text-align:center;margin-top:30px;color:#64748b;font-size:11px}
+</style></head><body>
+<div class="header">
+<h1>🏠 ShoreHomeScore Report</h1>
+<p class="address">${property.address || town.name + ', NJ ' + town.zip}</p>
+<p style="font-size:11px;color:#64748b;margin-top:4px">Generated ${new Date().toLocaleDateString()}</p>
+</div>
+<div class="score-section">
+<div class="score-box"><div class="value" style="color:${score >= 60 ? '#10b981' : '#f59e0b'}">${score}</div><div class="label">Resilience Score</div></div>
+<div class="score-box"><div class="value" style="color:#10b981">$${savings.toLocaleString()}</div><div class="label">Annual Savings</div></div>
+</div>
+<div class="section"><h2>Property Details</h2>
+<div class="grid">
+<div class="item"><div class="label">Flood Zone</div><div class="value">${property.floodZone || town.zone}</div></div>
+<div class="item"><div class="label">Base Flood Elevation</div><div class="value">${property.bfe || town.bfe} ft</div></div>
+<div class="item"><div class="label">CAFE Requirement</div><div class="value">${(property.bfe || town.bfe) + CAFE_ELEVATION} ft</div></div>
+<div class="item"><div class="label">County</div><div class="value">${town.county}</div></div>
+</div></div>
+<div class="section"><h2>Protection Status</h2>
+<ul class="checklist">
+<li><span>Elevation Certificate</span><span class="${data.elevationCert === 'yes' ? 'check' : 'nocheck'}">${data.elevationCert === 'yes' ? '✓ Yes' : '✗ No'}</span></li>
+<li><span>Above BFE</span><span class="${data.elevationVsBFE?.includes('above') ? 'check' : 'nocheck'}">${data.elevationVsBFE || 'Unknown'}</span></li>
+<li><span>Foundation</span><span>${data.foundation || 'Unknown'}</span></li>
+<li><span>Flood Vents</span><span class="${data.floodVents === 'yes' ? 'check' : 'nocheck'}">${data.floodVents === 'yes' ? '✓ Yes' : '✗ No'}</span></li>
+<li><span>Roof Type</span><span>${data.roofType || 'Unknown'}</span></li>
+<li><span>Window Protection</span><span>${data.windowProtection || 'None'}</span></li>
+</ul></div>
+<div class="section"><h2>Insurance Savings</h2>
+<ul class="checklist">
+${data.elevationCert === 'yes' ? '<li><span>Elevation Certificate</span><span class="check">+$500/yr</span></li>' : ''}
+${data.elevationVsBFE === 'above4' ? '<li><span>4+ ft Above BFE</span><span class="check">+$1,200/yr</span></li>' : ''}
+${data.elevationVsBFE === 'above2' ? '<li><span>2-4 ft Above BFE</span><span class="check">+$800/yr</span></li>' : ''}
+${data.foundation === 'piles' ? '<li><span>Pile Foundation</span><span class="check">+$600/yr</span></li>' : ''}
+${data.floodVents === 'yes' ? '<li><span>Flood Vents</span><span class="check">+$300/yr</span></li>' : ''}
+${data.roofType === 'metal' ? '<li><span>Metal Roof</span><span class="check">+$600/yr</span></li>' : ''}
+${data.windowProtection === 'impact' ? '<li><span>Impact Windows</span><span class="check">+$500/yr</span></li>' : ''}
+<li style="border-top:2px solid #334155;margin-top:8px;padding-top:12px"><span><strong>Total Annual Savings</strong></span><span style="color:#10b981;font-weight:bold">$${savings.toLocaleString()}/yr</span></li>
+<li><span>10-Year Impact</span><span style="color:#fff">$${(savings * 10).toLocaleString()}</span></li>
+</ul></div>
+<div class="footer"><p>ShoreHomeScore • Data: FEMA, NOAA, NJ DEP • For informational purposes only</p></div>
+</body></html>`;
   
-  <div class="score-section">
-    <div class="score-box score">
-      <div class="value">${score}</div>
-      <div class="label">Protection Score</div>
-    </div>
-    <div class="score-box savings">
-      <div class="value">$${savings.toLocaleString()}</div>
-      <div class="label">Annual Savings</div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>Property Information</h2>
-    <div class="grid">
-      <div class="item">
-        <div class="label">Flood Zone</div>
-        <div class="value">${town.zone}</div>
-      </div>
-      <div class="item">
-        <div class="label">Base Flood Elevation</div>
-        <div class="value">${town.bfe} ft</div>
-      </div>
-      <div class="item">
-        <div class="label">CAFE Requirement</div>
-        <div class="value">${town.bfe + CAFE_ELEVATION} ft</div>
-      </div>
-      <div class="item">
-        <div class="label">Risk Level</div>
-        <div class="value">${town.zone.startsWith('V') ? 'Coastal High Risk' : town.zone.startsWith('A') ? 'High Risk' : 'Moderate'}</div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>Protection Status</h2>
-    <ul class="checklist">
-      <li><span class="check ${data.elevationCert === 'yes' ? 'yes' : 'no'}">${data.elevationCert === 'yes' ? '✓' : '–'}</span> Elevation Certificate</li>
-      <li><span class="check ${data.elevationVsBFE === 'above4' || data.elevationVsBFE === 'above2' ? 'yes' : 'no'}">${data.elevationVsBFE === 'above4' || data.elevationVsBFE === 'above2' ? '✓' : '–'}</span> Elevated Above BFE</li>
-      <li><span class="check ${data.foundation === 'piles' || data.foundation === 'piers' ? 'yes' : 'no'}">${data.foundation === 'piles' || data.foundation === 'piers' ? '✓' : '–'}</span> Elevated Foundation</li>
-      <li><span class="check ${data.floodVents === 'yes' ? 'yes' : 'no'}">${data.floodVents === 'yes' ? '✓' : '–'}</span> Flood Vents Installed</li>
-      <li><span class="check ${data.roofType === 'metal' || data.roofType === 'tile' ? 'yes' : 'no'}">${data.roofType === 'metal' || data.roofType === 'tile' ? '✓' : '–'}</span> Wind-Resistant Roof</li>
-      <li><span class="check ${data.windowProtection === 'impact' || data.windowProtection === 'shutters' ? 'yes' : 'no'}">${data.windowProtection === 'impact' || data.windowProtection === 'shutters' ? '✓' : '–'}</span> Window Protection</li>
-    </ul>
-  </div>
-  
-  <div class="section">
-    <h2>Insurance Savings Breakdown</h2>
-    <ul class="checklist">
-      ${data.elevationCert === 'yes' ? '<li><span style="color:#10b981">+$500/yr</span> — Elevation Certificate</li>' : ''}
-      ${data.elevationVsBFE === 'above4' ? '<li><span style="color:#10b981">+$1,200/yr</span> — 4+ ft Above BFE</li>' : ''}
-      ${data.elevationVsBFE === 'above2' ? '<li><span style="color:#10b981">+$800/yr</span> — 2-4 ft Above BFE</li>' : ''}
-      ${data.foundation === 'piles' ? '<li><span style="color:#10b981">+$600/yr</span> — Pile Foundation</li>' : ''}
-      ${data.foundation === 'piers' ? '<li><span style="color:#10b981">+$400/yr</span> — Pier Foundation</li>' : ''}
-      ${data.floodVents === 'yes' ? '<li><span style="color:#10b981">+$300/yr</span> — Flood Vents</li>' : ''}
-      ${data.roofType === 'metal' ? '<li><span style="color:#10b981">+$600/yr</span> — Metal Roof</li>' : ''}
-      ${data.windowProtection === 'impact' ? '<li><span style="color:#10b981">+$500/yr</span> — Impact Windows</li>' : ''}
-      ${data.windowProtection === 'shutters' ? '<li><span style="color:#10b981">+$300/yr</span> — Hurricane Shutters</li>' : ''}
-    </ul>
-    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #334155; display: flex; justify-content: space-between;">
-      <span style="font-weight: bold;">Total Annual Savings</span>
-      <span style="font-weight: bold; color: #10b981;">$${savings.toLocaleString()}/yr</span>
-    </div>
-    <div style="margin-top: 8px; display: flex; justify-content: space-between; color: #94a3b8;">
-      <span>10-Year Impact</span>
-      <span style="color: white;">$${(savings * 10).toLocaleString()}</span>
-    </div>
-  </div>
-  
-  <div class="footer">
-    <p>ShoreHomeScore • NJ Shore Home Protection Dashboard</p>
-    <p style="margin-top: 4px;">Data sources: FEMA, NOAA, NJ DEP • For informational purposes only</p>
-  </div>
-</body>
-</html>`;
-
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(reportHTML);
-  printWindow.document.close();
-  setTimeout(() => printWindow.print(), 500);
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
 };
 
 // =============================================================================
-// COMPONENTS
+// TOGGLE ITEM WITH ROI
 // =============================================================================
-
-const ScoreBadge = ({ score, size = 'md' }) => {
-  const color = score >= 70 ? 'emerald' : score >= 40 ? 'amber' : 'red';
-  const sizes = {
-    sm: 'w-10 h-10 text-sm',
-    md: 'w-16 h-16 text-xl',
-    lg: 'w-24 h-24 text-3xl',
-  };
-  const colors = {
-    emerald: 'border-emerald-500 text-emerald-400',
-    amber: 'border-amber-500 text-amber-400',
-    red: 'border-red-500 text-red-400',
-  };
+const ToggleItem = ({ label, description, value, onChange, options, savingsImpact, potentialSavings, info }) => {
+  const [showInfo, setShowInfo] = useState(false);
   
   return (
-    <div className={`${sizes[size]} ${colors[color]} rounded-full border-4 flex items-center justify-center font-bold bg-slate-900`}>
-      {score}
+    <div className={`p-3 rounded-xl border transition-all ${
+      value !== undefined ? 'bg-slate-800/80 border-slate-600' : 'bg-slate-800/40 border-slate-700'
+    }`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-white">{label}</span>
+            {info && (
+              <button onClick={() => setShowInfo(!showInfo)} className="p-0.5 hover:bg-slate-700 rounded">
+                <Info className={`w-3.5 h-3.5 ${showInfo ? 'text-cyan-400' : 'text-slate-500'}`} />
+              </button>
+            )}
+          </div>
+          {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+          
+          {/* Show savings when they have the feature */}
+          {savingsImpact && value === options[0]?.value && (
+            <p className="text-xs text-emerald-400 mt-1">💰 {savingsImpact}</p>
+          )}
+          
+          {/* Show potential savings when they DON'T have the feature */}
+          {potentialSavings && value !== undefined && value !== options[0]?.value && value !== 'unsure' && (
+            <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p className="text-xs text-amber-400">💡 Potential savings: <span className="font-bold">${potentialSavings}/yr</span> if you add this</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Info Popup */}
+      <AnimatePresence>
+        {showInfo && info && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 overflow-hidden"
+          >
+            <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-sm">
+              {info.why && (
+                <div className="mb-2">
+                  <p className="text-cyan-400 font-medium text-xs uppercase tracking-wider mb-1">Why it matters</p>
+                  <p className="text-slate-300">{info.why}</p>
+                </div>
+              )}
+              {info.howToSpot && (
+                <div className="mb-2">
+                  <p className="text-amber-400 font-medium text-xs uppercase tracking-wider mb-1">🔍 How to spot it</p>
+                  <p className="text-slate-300">{info.howToSpot}</p>
+                </div>
+              )}
+              {info.tip && (
+                <div>
+                  <p className="text-emerald-400 font-medium text-xs uppercase tracking-wider mb-1">💡 Pro tip</p>
+                  <p className="text-slate-300">{info.tip}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              value === opt.value ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+            }`}
+          >{opt.label}</button>
+        ))}
+      </div>
     </div>
   );
 };
 
-const ToggleItem = ({ label, description, value, onChange, options, savingsImpact }) => (
-  <div className={`p-3 rounded-xl border transition-all ${
-    value !== undefined ? 'bg-slate-800/80 border-slate-600' : 'bg-slate-800/40 border-slate-700'
-  }`}>
-    <div className="flex items-start justify-between gap-3 mb-2">
-      <div className="flex-1">
-        <span className="text-sm font-medium text-white">{label}</span>
-        {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
-        {savingsImpact && value === options[0]?.value && (
-          <p className="text-xs text-emerald-400 mt-1">💰 {savingsImpact}</p>
-        )}
-      </div>
-    </div>
-    <div className="flex flex-wrap gap-1.5">
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            value === opt.value 
-              ? 'bg-cyan-500 text-white' 
-              : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
+// =============================================================================
+// CATEGORY SECTION
+// =============================================================================
 const CategorySection = ({ title, icon: Icon, color, children, badge }) => {
   const [isOpen, setIsOpen] = useState(true);
   const colors = {
@@ -350,37 +413,22 @@ const CategorySection = ({ title, icon: Icon, color, children, badge }) => {
     emerald: 'text-emerald-400 bg-emerald-500/20',
     amber: 'text-amber-400 bg-amber-500/20',
     violet: 'text-violet-400 bg-violet-500/20',
-    red: 'text-red-400 bg-red-500/20',
   };
   
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition-colors"
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/30">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${colors[color]}`}>
-            <Icon className="w-5 h-5" />
-          </div>
+          <div className={`p-2 rounded-lg ${colors[color]}`}><Icon className="w-5 h-5" /></div>
           <span className="font-medium text-white">{title}</span>
-          {badge && (
-            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">{badge}</span>
-          )}
+          {badge && <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">{badge}</span>}
         </div>
         <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
-            exit={{ height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-4 pt-0 space-y-2">
-              {children}
-            </div>
+          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="p-4 pt-0 space-y-2">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -388,57 +436,45 @@ const CategorySection = ({ title, icon: Icon, color, children, badge }) => {
   );
 };
 
-const InfoCard = ({ icon: Icon, label, value, subtitle, color = 'cyan', onClick }) => {
+// =============================================================================
+// INFO CARD
+// =============================================================================
+const InfoCard = ({ icon: Icon, label, value, subtitle, color = 'cyan', tooltip }) => {
+  const [showTip, setShowTip] = useState(false);
   const colors = {
-    cyan: 'border-cyan-500/30 hover:border-cyan-500/50',
-    emerald: 'border-emerald-500/30 hover:border-emerald-500/50',
-    amber: 'border-amber-500/30 hover:border-amber-500/50',
-    red: 'border-red-500/30 hover:border-red-500/50',
+    cyan: 'border-cyan-500/30', emerald: 'border-emerald-500/30',
+    amber: 'border-amber-500/30', red: 'border-red-500/30',
   };
   const iconColors = {
-    cyan: 'text-cyan-400 bg-cyan-500/20',
-    emerald: 'text-emerald-400 bg-emerald-500/20',
-    amber: 'text-amber-400 bg-amber-500/20',
-    red: 'text-red-400 bg-red-500/20',
+    cyan: 'text-cyan-400 bg-cyan-500/20', emerald: 'text-emerald-400 bg-emerald-500/20',
+    amber: 'text-amber-400 bg-amber-500/20', red: 'text-red-400 bg-red-500/20',
   };
   
-  const Wrapper = onClick ? 'button' : 'div';
-  
   return (
-    <Wrapper 
-      onClick={onClick}
-      className={`bg-slate-800/50 border ${colors[color]} rounded-xl p-4 text-left transition-all ${onClick ? 'cursor-pointer' : ''}`}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`p-1.5 rounded-lg ${iconColors[color]}`}>
-          <Icon className="w-4 h-4" />
+    <div className={`relative bg-slate-800/50 border ${colors[color]} rounded-xl p-4`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-lg ${iconColors[color]}`}><Icon className="w-4 h-4" /></div>
+          <span className="text-xs text-slate-400 uppercase">{label}</span>
         </div>
-        <span className="text-xs text-slate-400 uppercase">{label}</span>
+        {tooltip && (
+          <button onClick={() => setShowTip(!showTip)} className="p-1 hover:bg-slate-700 rounded">
+            <Info className={`w-3 h-3 ${showTip ? 'text-cyan-400' : 'text-slate-500'}`} />
+          </button>
+        )}
       </div>
       <p className="text-xl font-bold text-white">{value}</p>
       {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
-    </Wrapper>
-  );
-};
-
-const AlertBanner = ({ type = 'info', title, description }) => {
-  const styles = {
-    info: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400',
-    warning: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-    urgent: 'bg-red-500/10 border-red-500/30 text-red-400',
-  };
-  const icons = { info: Info, warning: AlertTriangle, urgent: AlertCircle };
-  const Icon = icons[type];
-  
-  return (
-    <div className={`${styles[type]} border rounded-xl p-4`}>
-      <div className="flex items-start gap-3">
-        <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-medium text-white">{title}</p>
-          <p className="text-sm opacity-80 mt-1">{description}</p>
-        </div>
-      </div>
+      <AnimatePresence>
+        {showTip && tooltip && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="absolute left-0 right-0 top-full mt-2 p-3 bg-slate-800 border border-cyan-500/30 rounded-lg shadow-xl z-20 text-sm"
+          >
+            <p className="text-slate-300">{tooltip}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -450,132 +486,156 @@ export default function CommandCenter() {
   // State
   const [town, setTown] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shs_town_v7');
+      const saved = localStorage.getItem('shs_town_v8');
       return saved ? JSON.parse(saved) : null;
     }
     return null;
   });
   
+  const [property, setProperty] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shs_property_v8');
+      return saved ? JSON.parse(saved) : { address: '' };
+    }
+    return { address: '' };
+  });
+  
   const [data, setData] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shs_data_v7');
+      const saved = localStorage.getItem('shs_data_v8');
       return saved ? JSON.parse(saved) : {};
     }
     return {};
   });
   
   const [showGlossary, setShowGlossary] = useState(false);
+  const [tideData, setTideData] = useState(null);
+  const [weatherAlerts, setWeatherAlerts] = useState([]);
+  const [femaData, setFemaData] = useState(null);
+  const [loading, setLoading] = useState(false);
   
   // Persistence
   useEffect(() => {
-    if (town) localStorage.setItem('shs_town_v7', JSON.stringify(town));
+    if (town) localStorage.setItem('shs_town_v8', JSON.stringify(town));
   }, [town]);
   
   useEffect(() => {
-    localStorage.setItem('shs_data_v7', JSON.stringify(data));
+    if (property) localStorage.setItem('shs_property_v8', JSON.stringify(property));
+  }, [property]);
+  
+  useEffect(() => {
+    localStorage.setItem('shs_data_v8', JSON.stringify(data));
   }, [data]);
   
-  // Tide data
-  const [tideData, setTideData] = useState(null);
-  
+  // Fetch APIs when town changes
   useEffect(() => {
-    if (town) {
-      fetch(`/api/tides?county=${encodeURIComponent(town.county)}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) setTideData(data);
-        })
-        .catch(() => {});
-    }
+    if (!town) return;
+    
+    // Fetch tides
+    fetch(`/api/tides?county=${encodeURIComponent(town.county)}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setTideData(d); })
+      .catch(() => {});
+    
+    // Fetch weather alerts
+    fetch(`/api/weather-alerts?zip=${town.zip}`)
+      .then(r => r.json())
+      .then(d => { if (d.alerts) setWeatherAlerts(d.alerts); })
+      .catch(() => {});
   }, [town]);
   
-  // Update handler
+  // Fetch FEMA data when address changes
+  const lookupAddress = async () => {
+    if (!property.address || !town) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(property.address)}&zipCode=${town.zip}`);
+      const d = await res.json();
+      if (d.floodZone) {
+        setFemaData(d);
+        setProperty(prev => ({
+          ...prev,
+          floodZone: d.floodZone,
+          bfe: d.bfe || town.bfe,
+        }));
+      }
+    } catch (e) {
+      console.error('FEMA lookup failed:', e);
+    }
+    setLoading(false);
+  };
+  
   const update = useCallback((key, value) => {
     setData(prev => ({ ...prev, [key]: value }));
   }, []);
   
-  // Calculations
-  const answeredCount = Object.keys(data).filter(k => data[k] !== undefined).length;
-  
+  // Score calculation
   const score = useMemo(() => {
-    let points = 0;
-    // Flood protection (40 points)
-    if (data.elevationCert === 'yes') points += 8;
-    if (data.elevationVsBFE === 'above4') points += 12;
-    else if (data.elevationVsBFE === 'above2') points += 8;
-    else if (data.elevationVsBFE === 'at') points += 4;
-    if (data.foundation === 'piles') points += 10;
-    else if (data.foundation === 'piers') points += 7;
-    else if (data.foundation === 'crawl') points += 4;
-    if (data.floodVents === 'yes') points += 6;
-    if (data.breakawayWalls === 'yes') points += 4;
-    // Wind protection (35 points)
-    if (data.roofType === 'metal') points += 12;
-    else if (data.roofType === 'tile') points += 10;
-    else if (data.roofType === 'architectural') points += 6;
-    if (data.roofDeck === 'yes') points += 6;
-    if (data.roofAge && data.roofAge <= 10) points += 5;
-    if (data.windowProtection === 'impact') points += 10;
-    else if (data.windowProtection === 'shutters') points += 7;
-    else if (data.windowProtection === 'plywood') points += 3;
-    if (data.garageDoor === 'yes') points += 4;
-    // Smart & systems (15 points)
-    if (data.waterShutoff === 'yes') points += 4;
-    if (data.leakSensors === 'yes') points += 3;
-    if (data.backupPower === 'generator' || data.backupPower === 'battery') points += 4;
-    if (data.hvacElevated === 'yes') points += 2;
-    if (data.electricalElevated === 'yes') points += 2;
-    // Documentation (10 points)
-    if (data.floodInsurance === 'yes' || data.floodInsurance === 'private') points += 6;
-    if (data.windMitigation === 'yes') points += 4;
-    
-    return Math.min(points, 100);
+    let pts = 0;
+    if (data.elevationCert === 'yes') pts += 8;
+    if (data.elevationVsBFE === 'above4') pts += 12;
+    else if (data.elevationVsBFE === 'above2') pts += 8;
+    else if (data.elevationVsBFE === 'at') pts += 4;
+    if (data.foundation === 'piles') pts += 10;
+    else if (data.foundation === 'piers') pts += 7;
+    else if (data.foundation === 'crawl') pts += 4;
+    if (data.floodVents === 'yes') pts += 6;
+    if (data.breakawayWalls === 'yes') pts += 4;
+    if (data.roofType === 'metal') pts += 12;
+    else if (data.roofType === 'tile') pts += 10;
+    else if (data.roofType === 'architectural') pts += 6;
+    if (data.roofDeck === 'yes') pts += 6;
+    if (data.roofAge && data.roofAge <= 10) pts += 5;
+    if (data.windowProtection === 'impact') pts += 10;
+    else if (data.windowProtection === 'shutters') pts += 7;
+    else if (data.windowProtection === 'plywood') pts += 3;
+    if (data.garageDoor === 'yes') pts += 4;
+    if (data.waterShutoff === 'yes') pts += 4;
+    if (data.leakSensors === 'yes') pts += 3;
+    if (data.backupPower === 'generator' || data.backupPower === 'battery') pts += 4;
+    if (data.hvacElevated === 'yes') pts += 2;
+    if (data.electricalElevated === 'yes') pts += 2;
+    if (data.floodInsurance === 'yes' || data.floodInsurance === 'private') pts += 6;
+    if (data.windMitigation === 'yes') pts += 4;
+    return Math.min(pts, 100);
   }, [data]);
   
+  // Savings calculation
   const savings = useMemo(() => {
-    let total = 0;
-    // Flood savings
-    if (data.elevationCert === 'yes') total += 500;
-    if (data.elevationVsBFE === 'above4') total += 1200;
-    else if (data.elevationVsBFE === 'above2') total += 800;
-    if (data.foundation === 'piles') total += 600;
-    else if (data.foundation === 'piers') total += 400;
-    if (data.floodVents === 'yes') total += 300;
-    if (data.breakawayWalls === 'yes') total += 200;
-    // Wind savings
-    if (data.roofType === 'metal') total += 600;
-    else if (data.roofType === 'tile') total += 400;
-    if (data.roofDeck === 'yes') total += 400;
-    if (data.roofAge && data.roofAge <= 10) total += 300;
-    if (data.windowProtection === 'impact') total += 500;
-    else if (data.windowProtection === 'shutters') total += 300;
-    if (data.garageDoor === 'yes') total += 200;
-    // Smart savings
-    if (data.waterShutoff === 'yes') total += 200;
-    
-    return total;
+    let t = 0;
+    if (data.elevationCert === 'yes') t += 500;
+    if (data.elevationVsBFE === 'above4') t += 1200;
+    else if (data.elevationVsBFE === 'above2') t += 800;
+    if (data.foundation === 'piles') t += 600;
+    else if (data.foundation === 'piers') t += 400;
+    if (data.floodVents === 'yes') t += 300;
+    if (data.breakawayWalls === 'yes') t += 200;
+    if (data.roofType === 'metal') t += 600;
+    else if (data.roofType === 'tile') t += 400;
+    if (data.roofDeck === 'yes') t += 400;
+    if (data.roofAge && data.roofAge <= 10) t += 300;
+    if (data.windowProtection === 'impact') t += 500;
+    else if (data.windowProtection === 'shutters') t += 300;
+    if (data.garageDoor === 'yes') t += 200;
+    if (data.waterShutoff === 'yes') t += 200;
+    return t;
   }, [data]);
   
-  const riskLevel = town?.zone?.startsWith('V') ? 'high' : town?.zone?.startsWith('A') ? 'moderate' : 'low';
-  const cafeRequired = town ? town.bfe + CAFE_ELEVATION : 0;
+  const effectiveBfe = property.bfe || town?.bfe || 0;
+  const cafeRequired = effectiveBfe + CAFE_ELEVATION;
   const daysToLegacy = Math.max(0, Math.ceil((LEGACY_WINDOW_END - new Date()) / (1000 * 60 * 60 * 24)));
   const daysToStorm = Math.max(0, Math.ceil((STORM_SEASON_START - new Date()) / (1000 * 60 * 60 * 24)));
 
   // ===========================================
-  // RENDER: TOWN SELECTION
+  // WELCOME SCREEN
   // ===========================================
   if (!town) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full text-cyan-400 text-sm font-medium mb-4 border border-cyan-500/30">
-              <Shield className="w-4 h-4" />
-              ShoreHomeScore
+              <Shield className="w-4 h-4" /> ShoreHomeScore
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Welcome! 👋</h1>
             <p className="text-slate-400">Your NJ shore home protection dashboard</p>
@@ -610,69 +670,40 @@ export default function CommandCenter() {
   }
 
   // ===========================================
-  // RENDER: MAIN DASHBOARD
+  // MAIN DASHBOARD
   // ===========================================
   return (
     <div className="min-h-screen bg-slate-900">
       <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
       
-      {/* Sticky Header with Resilience Score & Savings */}
+      {/* Sticky Header */}
       <header className="bg-slate-800/95 backdrop-blur border-b border-slate-700 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            {/* Left: Location */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="p-1.5 bg-cyan-500/20 rounded-lg">
                 <Home className="w-4 h-4 text-cyan-400" />
               </div>
               <div>
                 <h1 className="font-bold text-white text-sm">{town.name}</h1>
-                <p className="text-xs text-slate-400">Zone {town.zone} • BFE {town.bfe}ft</p>
+                <p className="text-xs text-slate-400">{property.address || `Zone ${property.floodZone || town.zone}`}</p>
               </div>
             </div>
             
-            {/* Center: Score & Savings */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/50 rounded-full border border-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-cyan-400" />
-                  <span className="text-xs text-slate-400">Resilience</span>
-                </div>
-                <span className={`text-lg font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
-                  {score}
-                </span>
+              <MiniScore score={score} />
+              <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/30">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-sm font-bold text-emerald-400">${savings.toLocaleString()}</span>
               </div>
-              
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/30">
-                <DollarSign className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-bold text-emerald-400">${savings.toLocaleString()}/yr</span>
-              </div>
-            </div>
-            
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setShowGlossary(true)}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors group"
-                title="Glossary"
-              >
-                <Book className="w-4 h-4 text-slate-400 group-hover:text-cyan-400" />
+              <button onClick={() => setShowGlossary(true)} className="p-2 hover:bg-slate-700 rounded-lg">
+                <Book className="w-4 h-4 text-slate-400" />
               </button>
-              
-              <button
-                onClick={() => generatePDFReport(town, data, score, savings)}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors group"
-                title="Download Report"
-              >
-                <Download className="w-4 h-4 text-slate-400 group-hover:text-cyan-400" />
+              <button onClick={() => generatePDF(property, town, data, score, savings)} className="p-2 hover:bg-slate-700 rounded-lg">
+                <Download className="w-4 h-4 text-slate-400" />
               </button>
-              
-              <button
-                onClick={() => { setTown(null); localStorage.removeItem('shs_town_v7'); }}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors group"
-                title="Change Town"
-              >
-                <Settings className="w-4 h-4 text-slate-400 group-hover:text-cyan-400" />
+              <button onClick={() => { setTown(null); setProperty({ address: '' }); localStorage.removeItem('shs_town_v8'); }} className="p-2 hover:bg-slate-700 rounded-lg">
+                <Settings className="w-4 h-4 text-slate-400" />
               </button>
             </div>
           </div>
@@ -681,124 +712,123 @@ export default function CommandCenter() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <InfoCard
-            icon={Waves}
-            label="Flood Zone"
-            value={town.zone}
-            subtitle={town.zone.startsWith('V') ? 'Coastal High Risk' : 'High Risk'}
-            color={town.zone.startsWith('V') ? 'red' : 'amber'}
-            onClick={() => setShowGlossary(true)}
-          />
-          <InfoCard
-            icon={ArrowUp}
-            label="CAFE Required"
-            value={`${cafeRequired} ft`}
-            subtitle={`BFE ${town.bfe}ft + 4ft`}
-            color="cyan"
-            onClick={() => setShowGlossary(true)}
-          />
-          <InfoCard
-            icon={Clock}
-            label="Legacy Window"
-            value={`${daysToLegacy} days`}
-            subtitle="Apply by July 15, 2026"
-            color="amber"
-          />
-          {tideData?.current?.level !== null ? (
-            <InfoCard
-              icon={Anchor}
-              label="Current Tide"
-              value={`${tideData.current.levelFeet} ft`}
-              subtitle={tideData.nextHighTide ? `Next high: ${tideData.nextHighTide.time?.split(' ')[1] || ''}` : tideData.station?.name}
-              color="cyan"
-            />
-          ) : (
-            <InfoCard
-              icon={CloudRain}
-              label="Storm Season"
-              value={`${daysToStorm} days`}
-              subtitle="Starts June 1"
-              color="cyan"
-            />
-          )}
-        </div>
-        
-        {/* Live Tide Banner */}
-        {tideData?.current?.level !== null && (
-          <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-cyan-500/20 rounded-lg">
-                  <Anchor className="w-5 h-5 text-cyan-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-400">Live Water Level at {tideData.station?.name}</p>
-                  <p className="text-xl font-bold text-white">{tideData.current.levelFeet} ft <span className="text-sm font-normal text-slate-400">NAVD88</span></p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-500">Your BFE: {town.bfe} ft</p>
-                <p className={`text-sm font-bold ${parseFloat(tideData.current.levelFeet) < town.bfe ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {parseFloat(tideData.current.levelFeet) < town.bfe 
-                    ? `${(town.bfe - parseFloat(tideData.current.levelFeet)).toFixed(1)} ft below BFE ✓` 
-                    : `${(parseFloat(tideData.current.levelFeet) - town.bfe).toFixed(1)} ft ABOVE BFE ⚠️`}
-                </p>
-              </div>
-            </div>
-            {tideData.predictions?.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-cyan-500/20 flex gap-4 overflow-x-auto">
-                {tideData.predictions.slice(0, 4).map((pred, i) => (
-                  <div key={i} className="text-center flex-shrink-0">
-                    <p className={`text-xs ${pred.type === 'High' ? 'text-amber-400' : 'text-cyan-400'}`}>{pred.type}</p>
-                    <p className="text-sm font-bold text-white">{pred.level?.toFixed(1)} ft</p>
-                    <p className="text-xs text-slate-500">{pred.time?.split(' ')[1] || ''}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* Score + Address Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Big Score */}
+          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 flex flex-col items-center justify-center">
+            <ResilienceGauge score={score} size="large" />
           </div>
-        )}
+          
+          {/* Address + Quick Stats */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Address Input */}
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+              <label className="block text-sm font-medium text-slate-300 mb-2">Your Address (for personalized report)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="123 Ocean Ave..."
+                  value={property.address}
+                  onChange={(e) => setProperty(prev => ({ ...prev, address: e.target.value }))}
+                  className="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                />
+                <button
+                  onClick={lookupAddress}
+                  disabled={loading}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Search className="w-4 h-4" />
+                  {loading ? 'Looking up...' : 'Lookup'}
+                </button>
+              </div>
+              {femaData && (
+                <p className="text-xs text-emerald-400 mt-2">✓ FEMA data loaded: Zone {femaData.floodZone}, BFE {femaData.bfe}ft</p>
+              )}
+            </div>
+            
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <InfoCard
+                icon={Waves}
+                label="Flood Zone"
+                value={property.floodZone || town.zone}
+                subtitle={town.zone.startsWith('V') ? 'Coastal High Risk' : 'High Risk'}
+                color={town.zone.startsWith('V') ? 'red' : 'amber'}
+                tooltip="Your FEMA flood zone determines building requirements and insurance rates."
+              />
+              <InfoCard
+                icon={ArrowUp}
+                label="CAFE Required"
+                value={`${cafeRequired} ft`}
+                subtitle={`BFE ${effectiveBfe}ft + 4ft`}
+                color="cyan"
+                tooltip="Coastal A Flood Elevation - NJ requires new construction to be this high."
+              />
+              <InfoCard
+                icon={Clock}
+                label="Legacy Window"
+                value={`${daysToLegacy} days`}
+                subtitle="Apply by July 15, 2026"
+                color="amber"
+                tooltip="Permits submitted before this date can use previous elevation standards."
+              />
+              {tideData && tideData.current && tideData.current.level !== null ? (
+                <InfoCard
+                  icon={Anchor}
+                  label="Current Tide"
+                  value={`${tideData.current.levelFeet} ft`}
+                  subtitle={`${(effectiveBfe - parseFloat(tideData.current.levelFeet)).toFixed(1)}ft below BFE`}
+                  color="cyan"
+                  tooltip={`Live water level at ${tideData.station?.name}. Compare to your BFE to understand current flood margin.`}
+                />
+              ) : (
+                <InfoCard
+                  icon={CloudRain}
+                  label="Storm Season"
+                  value={`${daysToStorm} days`}
+                  subtitle="Starts June 1"
+                  color="cyan"
+                  tooltip="Hurricane season runs June 1 - November 30. Prepare before it starts."
+                />
+              )}
+            </div>
+          </div>
+        </div>
 
-        {/* Alerts */}
-        {town.zone.startsWith('V') && (
-          <AlertBanner
-            type="warning"
-            title="Coastal High Hazard Zone (VE)"
-            description="Wave action zone - breakaway walls required below BFE. Stricter building codes apply."
-          />
-        )}
-        
-        {data.elevationVsBFE === 'below' && (
-          <AlertBanner
-            type="urgent"
-            title="Below Base Flood Elevation"
-            description="Substantial improvements (>50% of value) will trigger CAFE compliance. Consider elevation planning."
-          />
+        {/* Weather Alerts */}
+        {weatherAlerts.length > 0 && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <span className="font-bold text-red-400">Active Weather Alert</span>
+            </div>
+            {weatherAlerts.slice(0, 2).map((alert, i) => (
+              <p key={i} className="text-sm text-slate-300">{alert.headline || alert.event}</p>
+            ))}
+          </div>
         )}
 
         {/* Categories */}
         <div className="space-y-3">
           
-          {/* Flood Protection */}
-          <CategorySection 
-            title="Flood Protection" 
-            icon={Droplets} 
-            color="blue"
-            badge={data.elevationCert === 'yes' || data.floodVents === 'yes' ? 'Active' : null}
-          >
+          <CategorySection title="Flood Protection" icon={Droplets} color="blue">
             <ToggleItem
               label="Elevation Certificate"
               description="Official document showing your home's elevation"
               value={data.elevationCert}
               onChange={(v) => update('elevationCert', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Unsure' }]}
-              savingsImpact="+$500/yr"
+              savingsImpact="+$500/yr savings"
+              potentialSavings={500}
+              info={{
+                why: "This is THE most important flood document. Insurance companies use it to calculate your premium.",
+                howToSpot: "Look for 'FEMA Form 086-0-33' or ask your mortgage company - they may have a copy from closing.",
+                tip: "A licensed surveyor can create one - costs vary by area but typically $300-600. Often pays for itself in year one through insurance savings."
+              }}
             />
             <ToggleItem
               label="Elevation vs BFE"
-              description={`Your BFE is ${town.bfe} ft`}
+              description={`Your BFE is ${effectiveBfe} ft`}
               value={data.elevationVsBFE}
               onChange={(v) => update('elevationVsBFE', v)}
               options={[
@@ -808,7 +838,12 @@ export default function CommandCenter() {
                 { value: 'below', label: 'Below' },
                 { value: 'unsure', label: 'Unsure' },
               ]}
-              savingsImpact="+$1,200/yr"
+              savingsImpact="+$1,200/yr savings"
+              info={{
+                why: "Elevation is the #1 factor in flood insurance. Each foot above BFE saves hundreds.",
+                howToSpot: "Check your Elevation Certificate or count steps from ground to front door (each step ≈ 7-8 inches).",
+                tip: "CAFE requires BFE + 4ft. If you're at or above this, you're in great shape!"
+              }}
             />
             <ToggleItem
               label="Foundation Type"
@@ -821,7 +856,12 @@ export default function CommandCenter() {
                 { value: 'slab', label: 'Slab' },
                 { value: 'basement', label: 'Basement' },
               ]}
-              savingsImpact="+$600/yr"
+              savingsImpact="+$600/yr savings"
+              info={{
+                why: "Elevated foundations let water flow under. Slab/basement trap water and suffer most damage.",
+                howToSpot: "PILES: Round poles into ground. PIERS: Concrete blocks on footings. CRAWL: Short enclosed area. SLAB: Flat concrete on ground.",
+                tip: "In VE zones, pile foundations are required. They also allow easier future elevation."
+              }}
             />
             <ToggleItem
               label="Flood Vents"
@@ -829,39 +869,39 @@ export default function CommandCenter() {
               value={data.floodVents}
               onChange={(v) => update('floodVents', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Unsure' }]}
-              savingsImpact="+$300/yr"
+              savingsImpact="+$300/yr savings"
+              potentialSavings={300}
+              info={{
+                why: "Vents equalize water pressure during floods. Without them, pressure can collapse walls.",
+                howToSpot: "Look at garage/crawlspace walls near ground for rectangular or circular vents with louvers.",
+                tip: "Need 1 sq inch per 1 sq foot of enclosed area. 500 sq ft garage needs ~4 standard vents."
+              }}
             />
-            {town.zone.startsWith('V') && (
-              <ToggleItem
-                label="Breakaway Walls"
-                description="Required in VE zones below BFE"
-                value={data.breakawayWalls}
-                onChange={(v) => update('breakawayWalls', v)}
-                options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'na', label: 'N/A' }]}
-                savingsImpact="+$200/yr"
-              />
-            )}
             <ToggleItem
-              label="HVAC Elevated Above BFE"
+              label="HVAC Elevated"
               value={data.hvacElevated}
               onChange={(v) => update('hvacElevated', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+              info={{
+                why: "HVAC costs $5-15K to replace and is destroyed by saltwater. Elevation protects this investment.",
+                howToSpot: "Find outdoor AC condenser and indoor air handler. Are they on raised platforms or roof?",
+                tip: "Relocating HVAC higher protects a major investment. Get quotes from local HVAC contractors."
+              }}
             />
             <ToggleItem
               label="Electrical Panel Elevated"
               value={data.electricalElevated}
               onChange={(v) => update('electricalElevated', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+              info={{
+                why: "Flooded panels are dangerous and delay power restoration after floods.",
+                howToSpot: "Find your breaker panel (gray metal box). Is it in garage at ground level or higher up?",
+                tip: "Panels should be 1+ ft above BFE. An electrician can assess relocation options."
+              }}
             />
           </CategorySection>
 
-          {/* Wind Defense */}
-          <CategorySection 
-            title="Wind Defense" 
-            icon={Wind} 
-            color="cyan"
-            badge={data.roofType === 'metal' || data.windowProtection === 'impact' ? 'Active' : null}
-          >
+          <CategorySection title="Wind Defense" icon={Wind} color="cyan">
             <ToggleItem
               label="Roof Type"
               value={data.roofType}
@@ -873,7 +913,13 @@ export default function CommandCenter() {
                 { value: '3tab', label: '3-Tab' },
                 { value: 'flat', label: 'Flat' },
               ]}
-              savingsImpact="+$600/yr"
+              savingsImpact="+$600/yr savings"
+              potentialSavings={600}
+              info={{
+                why: "Metal roofs handle 180mph winds. 3-tab shingles often fail at 60-70mph.",
+                howToSpot: "METAL: Long vertical panels with raised seams. TILE: Clay/concrete curves. ARCHITECTURAL: Thick dimensional shingles.",
+                tip: "Metal costs more upfront but lasts 50+ years vs 20-25 for shingles, and offers significant insurance savings."
+              }}
             />
             <ToggleItem
               label="Sealed Roof Deck"
@@ -881,7 +927,13 @@ export default function CommandCenter() {
               value={data.roofDeck}
               onChange={(v) => update('roofDeck', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Unsure' }]}
-              savingsImpact="+$400/yr"
+              savingsImpact="+$400/yr savings"
+              potentialSavings={400}
+              info={{
+                why: "If shingles blow off, sealed deck prevents water intrusion. It's your backup.",
+                howToSpot: "Check roofing contract for 'peel and stick underlayment' or 'self-adhering membrane'.",
+                tip: "Adding sealed deck during roof replacement is relatively inexpensive vs. the protection it provides."
+              }}
             />
             <ToggleItem
               label="Roof Age"
@@ -894,7 +946,12 @@ export default function CommandCenter() {
                 { value: 20, label: '16-20' },
                 { value: 25, label: '20+' },
               ]}
-              savingsImpact="+$300/yr"
+              savingsImpact="+$300/yr savings"
+              info={{
+                why: "Older roofs fail more often. Many insurers won't cover roofs over 15-20 years.",
+                howToSpot: "Check purchase docs, permits, or look for date on attic side of roof deck.",
+                tip: "If roof is 15+ years, get it inspected to know where you stand."
+              }}
             />
             <ToggleItem
               label="Window Protection"
@@ -906,36 +963,54 @@ export default function CommandCenter() {
                 { value: 'plywood', label: 'Plywood' },
                 { value: 'none', label: 'None' },
               ]}
-              savingsImpact="+$500/yr"
+              savingsImpact="+$500/yr savings"
+              potentialSavings={500}
+              info={{
+                why: "Broken windows let wind in, pressurizing house and often blowing off roof.",
+                howToSpot: "IMPACT: Small etched label in corner. SHUTTERS: Accordion, roll-down, or panels beside windows.",
+                tip: "Impact windows add home value and reduce noise. Get quotes from window contractors for your specific situation."
+              }}
             />
             <ToggleItem
               label="Wind-Rated Garage Door"
               value={data.garageDoor}
               onChange={(v) => update('garageDoor', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'na', label: 'N/A' }]}
-              savingsImpact="+$200/yr"
+              savingsImpact="+$200/yr savings"
+              potentialSavings={200}
+              info={{
+                why: "Garage door is largest opening. Failure lets wind pressurize and damage structure.",
+                howToSpot: "Look for wind rating label inside door, or reinforcement bars across back.",
+                tip: "If you have a standard door, bracing kits can significantly improve wind resistance without full replacement."
+              }}
             />
           </CategorySection>
 
-          {/* Smart Systems */}
-          <CategorySection 
-            title="Smart Systems" 
-            icon={Zap} 
-            color="emerald"
-          >
+          <CategorySection title="Smart Systems" icon={Zap} color="emerald">
             <ToggleItem
               label="Smart Water Shutoff"
               description="Auto-detects leaks and shuts off water"
               value={data.waterShutoff}
               onChange={(v) => update('waterShutoff', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-              savingsImpact="+$200/yr"
+              savingsImpact="+$200/yr savings"
+              potentialSavings={200}
+              info={{
+                why: "Prevents catastrophic water damage by auto-cutting supply when leak detected.",
+                howToSpot: "Look at main water line where it enters house for motorized valve with WiFi.",
+                tip: "Some insurers offer discounts for smart water systems. Especially valuable for vacation homes that sit empty."
+              }}
             />
             <ToggleItem
               label="Leak Sensors"
               value={data.leakSensors}
               onChange={(v) => update('leakSensors', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+              info={{
+                why: "Alerts you immediately via phone so you can act before major damage.",
+                howToSpot: "Small pucks near water heater, washing machine, dishwasher, under sinks.",
+                tip: "Basic sensors cost $20-40 each. Put near any water source."
+              }}
             />
             <ToggleItem
               label="Backup Power"
@@ -947,24 +1022,25 @@ export default function CommandCenter() {
                 { value: 'portable', label: 'Portable' },
                 { value: 'none', label: 'None' },
               ]}
+              info={{
+                why: "Outages can last weeks. Without power, sump pumps stop and food spoils.",
+                howToSpot: "GENERATOR: Large unit outside with transfer switch. BATTERY: Wall-mounted like Powerwall. PORTABLE: In garage/shed.",
+                tip: "Whole-home generator ($5-15K) starts automatically. Portable ($500-1,500) runs essentials."
+              }}
             />
           </CategorySection>
 
-          {/* Insurance & Documentation */}
-          <CategorySection 
-            title="Insurance & Documentation" 
-            icon={FileText} 
-            color="amber"
-          >
+          <CategorySection title="Insurance & Documentation" icon={FileText} color="amber">
             <ToggleItem
               label="Flood Insurance"
               value={data.floodInsurance}
               onChange={(v) => update('floodInsurance', v)}
-              options={[
-                { value: 'yes', label: 'NFIP' },
-                { value: 'private', label: 'Private' },
-                { value: 'no', label: 'None' },
-              ]}
+              options={[{ value: 'yes', label: 'NFIP' }, { value: 'private', label: 'Private' }, { value: 'no', label: 'None' }]}
+              info={{
+                why: "Homeowners insurance does NOT cover floods. You need separate policy.",
+                howToSpot: "Check insurance docs for separate 'flood insurance' policy.",
+                tip: "NFIP max is $250K structure. Consider 'excess flood' if home worth more."
+              }}
             />
             <ToggleItem
               label="Wind Mitigation Report"
@@ -972,93 +1048,41 @@ export default function CommandCenter() {
               value={data.windMitigation}
               onChange={(v) => update('windMitigation', v)}
               options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+              info={{
+                why: "Documents your wind features for insurance credit. Without it, you may not get discounts.",
+                howToSpot: "2-4 page form from licensed inspector with photos of roof, connections, windows.",
+                tip: "Costs $75-150 and can save hundreds or thousands per year."
+              }}
             />
             
             {/* Savings Summary */}
             <div className="mt-4 p-4 bg-slate-900/50 rounded-xl">
               <h4 className="font-medium text-white mb-3">Your Insurance Savings</h4>
               <div className="space-y-2 text-sm">
-                {data.elevationCert === 'yes' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Elevation Certificate</span><span className="text-emerald-400">+$500</span></div>
-                )}
-                {data.elevationVsBFE === 'above4' && (
-                  <div className="flex justify-between"><span className="text-slate-400">4+ ft Above BFE</span><span className="text-emerald-400">+$1,200</span></div>
-                )}
-                {data.elevationVsBFE === 'above2' && (
-                  <div className="flex justify-between"><span className="text-slate-400">2-4 ft Above BFE</span><span className="text-emerald-400">+$800</span></div>
-                )}
-                {(data.foundation === 'piles' || data.foundation === 'piers') && (
-                  <div className="flex justify-between"><span className="text-slate-400">Elevated Foundation</span><span className="text-emerald-400">+${data.foundation === 'piles' ? '600' : '400'}</span></div>
-                )}
-                {data.floodVents === 'yes' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Flood Vents</span><span className="text-emerald-400">+$300</span></div>
-                )}
-                {data.roofType === 'metal' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Metal Roof</span><span className="text-emerald-400">+$600</span></div>
-                )}
-                {data.roofDeck === 'yes' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Sealed Roof Deck</span><span className="text-emerald-400">+$400</span></div>
-                )}
-                {(data.windowProtection === 'impact' || data.windowProtection === 'shutters') && (
-                  <div className="flex justify-between"><span className="text-slate-400">Window Protection</span><span className="text-emerald-400">+${data.windowProtection === 'impact' ? '500' : '300'}</span></div>
-                )}
-                {data.garageDoor === 'yes' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Wind-Rated Garage</span><span className="text-emerald-400">+$200</span></div>
-                )}
-                {data.waterShutoff === 'yes' && (
-                  <div className="flex justify-between"><span className="text-slate-400">Smart Water Shutoff</span><span className="text-emerald-400">+$200</span></div>
-                )}
-                
+                {data.elevationCert === 'yes' && <div className="flex justify-between"><span className="text-slate-400">Elevation Certificate</span><span className="text-emerald-400">+$500</span></div>}
+                {data.elevationVsBFE === 'above4' && <div className="flex justify-between"><span className="text-slate-400">4+ ft Above BFE</span><span className="text-emerald-400">+$1,200</span></div>}
+                {data.elevationVsBFE === 'above2' && <div className="flex justify-between"><span className="text-slate-400">2-4 ft Above BFE</span><span className="text-emerald-400">+$800</span></div>}
+                {(data.foundation === 'piles' || data.foundation === 'piers') && <div className="flex justify-between"><span className="text-slate-400">Elevated Foundation</span><span className="text-emerald-400">+${data.foundation === 'piles' ? '600' : '400'}</span></div>}
+                {data.floodVents === 'yes' && <div className="flex justify-between"><span className="text-slate-400">Flood Vents</span><span className="text-emerald-400">+$300</span></div>}
+                {data.roofType === 'metal' && <div className="flex justify-between"><span className="text-slate-400">Metal Roof</span><span className="text-emerald-400">+$600</span></div>}
+                {data.roofDeck === 'yes' && <div className="flex justify-between"><span className="text-slate-400">Sealed Roof Deck</span><span className="text-emerald-400">+$400</span></div>}
+                {(data.windowProtection === 'impact' || data.windowProtection === 'shutters') && <div className="flex justify-between"><span className="text-slate-400">Window Protection</span><span className="text-emerald-400">+${data.windowProtection === 'impact' ? '500' : '300'}</span></div>}
+                {data.garageDoor === 'yes' && <div className="flex justify-between"><span className="text-slate-400">Wind-Rated Garage</span><span className="text-emerald-400">+$200</span></div>}
+                {data.waterShutoff === 'yes' && <div className="flex justify-between"><span className="text-slate-400">Smart Water Shutoff</span><span className="text-emerald-400">+$200</span></div>}
                 <div className="border-t border-slate-700 pt-2 mt-2">
-                  <div className="flex justify-between font-bold">
-                    <span className="text-white">Total Annual Savings</span>
-                    <span className="text-emerald-400">${savings.toLocaleString()}/yr</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500 mt-1">
-                    <span>10-Year Impact</span>
-                    <span className="text-white">${(savings * 10).toLocaleString()}</span>
-                  </div>
+                  <div className="flex justify-between font-bold"><span className="text-white">Total Annual</span><span className="text-emerald-400">${savings.toLocaleString()}/yr</span></div>
+                  <div className="flex justify-between text-slate-500 mt-1"><span>10-Year Impact</span><span className="text-white">${(savings * 10).toLocaleString()}</span></div>
                 </div>
               </div>
             </div>
           </CategorySection>
 
-          {/* Climate & Future Risk */}
-          <CategorySection 
-            title="Future Risk & Climate" 
-            icon={TrendingUp} 
-            color="violet"
-          >
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-xl font-bold text-amber-400">{town.zone.startsWith('V') ? '9' : '7'}/10</p>
-                <p className="text-xs text-slate-500">Current</p>
-              </div>
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-xl font-bold text-orange-400">{town.zone.startsWith('V') ? '10' : '8'}/10</p>
-                <p className="text-xs text-slate-500">15 Years</p>
-              </div>
-              <div className="text-center p-3 bg-slate-900/50 rounded-xl">
-                <p className="text-xl font-bold text-red-400">{town.zone.startsWith('V') ? '10' : '9'}/10</p>
-                <p className="text-xs text-slate-500">30 Years</p>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-              <p className="text-sm text-slate-300">
-                <strong className="text-blue-400">Sea Level Rise Projection:</strong> NJ coast expected to see 
-                <strong className="text-white"> +1.5ft by 2050</strong> and <strong className="text-white">+4ft by 2100</strong>. 
-                Today's 100-year flood may become a 25-year event.
-              </p>
-            </div>
-          </CategorySection>
-
         </div>
 
-        {/* Footer */}
-        <footer className="text-center py-6 text-sm text-slate-500">
-          <p>ShoreHomeScore • NJ Shore Home Protection Dashboard</p>
-          <p className="mt-1">Data: FEMA NFHL, NOAA, NJ DEP • For informational purposes only</p>
+        <footer className="text-center py-6 text-sm text-slate-500 space-y-2">
+          <p className="font-medium text-slate-400">ShoreHomeScore</p>
+          <p>Flood data: FEMA National Flood Hazard Layer • Tides: NOAA CO-OPS • Weather: National Weather Service</p>
+          <p className="text-xs">Insurance savings estimates based on typical NFIP and private insurer discount patterns. Actual savings vary by policy and carrier. Consult your insurance agent for specific quotes.</p>
         </footer>
       </main>
     </div>
