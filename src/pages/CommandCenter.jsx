@@ -935,7 +935,51 @@ export default function ShoreHomeScore() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-600 py-6 pb-24">Educational information only. Consult licensed professionals for specific advice.</p>
+        {/* Professional Footer */}
+        <div className="mt-12 mb-24 border-t border-slate-700 pt-8">
+          {/* Data Sources */}
+          <div className="text-center mb-6">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Data Sources</p>
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
+              <span>FEMA Flood Maps</span>
+              <span>•</span>
+              <span>NFIP Guidelines</span>
+              <span>•</span>
+              <span>NJ DEP</span>
+              <span>•</span>
+              <span>NJDCA Building Codes</span>
+              <span>•</span>
+              <span>OpenFEMA API</span>
+            </div>
+          </div>
+          
+          {/* Trust Badges */}
+          <div className="flex flex-wrap justify-center gap-4 mb-6">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+              <span className="text-xs text-slate-400">2026 NJ REAL Compliant</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
+              <span className="text-xs text-slate-400">Updated Jan 2026</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full">
+              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+              <span className="text-xs text-slate-400">22 Shore Towns</span>
+            </div>
+          </div>
+          
+          {/* Disclaimer */}
+          <p className="text-center text-xs text-slate-600 max-w-2xl mx-auto">
+            Educational tool only. Flood zones, elevations, and insurance estimates are approximate and may vary by property. 
+            Consult FEMA flood maps, licensed surveyors, and insurance professionals for official determinations.
+          </p>
+          
+          {/* Copyright */}
+          <p className="text-center text-xs text-slate-700 mt-4">
+            © 2026 ShoreHomeScore • Built for NJ Shore Homeowners
+          </p>
+        </div>
       </main>
 
       {/* HELP MODAL */}
