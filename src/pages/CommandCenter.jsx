@@ -694,25 +694,53 @@ export default function ShoreHomeScore() {
           )}
         </div>
 
-        {/* Score Overview */}
+        {/* Score Overview with Radial Gauge */}
         {town && (
           <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-2xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white">Resilience Score</h2>
-                <HelpButton helpKey="score" />
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* Radial Gauge */}
+              <div className="relative w-40 h-40 flex-shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                  {/* Background circle */}
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#334155" strokeWidth="12" />
+                  {/* Score arc */}
+                  <circle 
+                    cx="60" cy="60" r="50" fill="none" 
+                    stroke={score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'}
+                    strokeWidth="12" 
+                    strokeLinecap="round"
+                    strokeDasharray={`${(score / 100) * 314} 314`}
+                    className="transition-all duration-700"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-4xl font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{score}</span>
+                  <span className="text-xs text-slate-500">/ 100</span>
+                </div>
               </div>
-              <div className={`text-5xl font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{score}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setShowHelp('insurance')} className="bg-slate-900/50 rounded-lg p-3 text-left hover:bg-slate-900 group">
-                <p className="text-sm text-slate-400 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4" /> Insurance <HelpCircle className="w-3 h-3 opacity-0 group-hover:opacity-100" /></p>
-                <p className={`text-xl font-bold ${totalIns > 0 ? 'text-red-400' : totalIns < 0 ? 'text-emerald-400' : 'text-slate-400'}`}>{totalIns > 0 ? '+' : ''}{fmt(Math.abs(totalIns))}/yr</p>
-              </button>
-              <button onClick={() => setShowHelp('equity')} className="bg-slate-900/50 rounded-lg p-3 text-left hover:bg-slate-900 group">
-                <p className="text-sm text-slate-400 mb-1 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Value <HelpCircle className="w-3 h-3 opacity-0 group-hover:opacity-100" /></p>
-                <p className={`text-xl font-bold ${totalEq > 0 ? 'text-emerald-400' : totalEq < 0 ? 'text-red-400' : 'text-slate-400'}`}>{totalEq > 0 ? '+' : ''}{fmt(Math.abs(totalEq))}</p>
-              </button>
+              
+              {/* Score Details */}
+              <div className="flex-1 w-full">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="text-lg font-bold text-white">Resilience Score</h2>
+                  <HelpButton helpKey="score" />
+                </div>
+                <p className="text-sm text-slate-400 mb-4">
+                  {score >= 70 ? '🏆 Excellent! Your home is well-protected.' : 
+                   score >= 40 ? '⚠️ Moderate protection. Room for improvement.' : 
+                   '🚨 Vulnerable. Consider upgrades below.'}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setShowHelp('insurance')} className="bg-slate-900/50 rounded-lg p-3 text-left hover:bg-slate-900 group">
+                    <p className="text-xs text-slate-500 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Insurance/yr <HelpCircle className="w-3 h-3 opacity-0 group-hover:opacity-100" /></p>
+                    <p className={`text-xl font-bold ${totalIns > 0 ? 'text-red-400' : totalIns < 0 ? 'text-emerald-400' : 'text-slate-400'}`}>{totalIns > 0 ? '+' : ''}{fmt(Math.abs(totalIns))}</p>
+                  </button>
+                  <button onClick={() => setShowHelp('equity')} className="bg-slate-900/50 rounded-lg p-3 text-left hover:bg-slate-900 group">
+                    <p className="text-xs text-slate-500 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Property Value <HelpCircle className="w-3 h-3 opacity-0 group-hover:opacity-100" /></p>
+                    <p className={`text-xl font-bold ${totalEq > 0 ? 'text-emerald-400' : totalEq < 0 ? 'text-red-400' : 'text-slate-400'}`}>{totalEq > 0 ? '+' : ''}{fmt(Math.abs(totalEq))}</p>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -907,7 +935,7 @@ export default function ShoreHomeScore() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-600 py-6">Educational information only. Consult licensed professionals for specific advice.</p>
+        <p className="text-center text-xs text-slate-600 py-6 pb-24">Educational information only. Consult licensed professionals for specific advice.</p>
       </main>
 
       {/* HELP MODAL */}
@@ -991,12 +1019,67 @@ export default function ShoreHomeScore() {
         )}
       </AnimatePresence>
 
-      {/* PDF Download Button */}
-      {isUnlocked && town && (
-        <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={() => generatePDFReport(town, address, selections, score, totalIns, totalEq, catScores, actions)} className="fixed bottom-6 right-6 px-4 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl shadow-lg flex items-center gap-2 z-30">
-          <Download className="w-5 h-5" />
-          Download PDF
-        </motion.button>
+      {/* Sticky Score Bar - Always visible when scrolling */}
+      {town && (
+        <motion.div 
+          initial={{ y: 100, opacity: 0 }} 
+          animate={{ y: 0, opacity: 1 }} 
+          className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-700 z-40 px-4 py-3"
+        >
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            {/* Mini Score Gauge */}
+            <div className="flex items-center gap-3">
+              <div className="relative w-12 h-12 flex-shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="16" fill="none" stroke="#334155" strokeWidth="4" />
+                  <circle 
+                    cx="20" cy="20" r="16" fill="none" 
+                    stroke={score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'}
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                    strokeDasharray={`${(score / 100) * 100} 100`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-sm font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{score}</span>
+                </div>
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-xs text-slate-500">Score</p>
+                <p className={`text-sm font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {score >= 70 ? 'Protected' : score >= 40 ? 'Moderate' : 'Vulnerable'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Insurance & Value */}
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="text-center">
+                <p className="text-[10px] sm:text-xs text-slate-500">Insurance/yr</p>
+                <p className={`text-sm sm:text-lg font-bold ${totalIns > 0 ? 'text-red-400' : totalIns < 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {totalIns > 0 ? '+' : ''}{fmt(Math.abs(totalIns))}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] sm:text-xs text-slate-500">Value</p>
+                <p className={`text-sm sm:text-lg font-bold ${totalEq > 0 ? 'text-emerald-400' : totalEq < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                  {totalEq > 0 ? '+' : ''}{fmt(Math.abs(totalEq))}
+                </p>
+              </div>
+            </div>
+            
+            {/* PDF Button */}
+            {isUnlocked && (
+              <button 
+                onClick={() => generatePDFReport(town, address, selections, score, totalIns, totalEq, catScores, actions)} 
+                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-lg flex items-center gap-2 text-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </button>
+            )}
+          </div>
+        </motion.div>
       )}
     </div>
   );
