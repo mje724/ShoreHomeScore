@@ -1336,6 +1336,63 @@ export default function ShoreHomeScore() {
   // DASHBOARD PAGE
   // ===========================================
   if (step === 'dashboard') {
+    // Collapsible section state
+    const [openSections, setOpenSections] = useState({
+      actions: true,
+      programs: true,
+      compliance: false,
+      insurance: false,
+    });
+    
+    const toggleSection = (key) => {
+      setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+    
+    // Collapsible Section Component
+    const CollapsibleSection = ({ id, icon: Icon, title, badge, children }) => (
+      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <button
+          onClick={() => toggleSection(id)}
+          className="w-full p-4 flex items-center justify-between hover:bg-slate-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Icon className="w-5 h-5 text-cyan-400" />
+            <span className="font-bold text-white">{title}</span>
+            {badge && (
+              <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">
+                {badge}
+              </span>
+            )}
+          </div>
+          <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${openSections[id] ? 'rotate-180' : ''}`} />
+        </button>
+        <AnimatePresence>
+          {openSections[id] && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 pt-0 border-t border-slate-700">
+                {children}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+
+    // Get action items from answers
+    const actionItems = QUESTIONS
+      .filter(q => answers[q.id] && q.effects[answers[q.id]]?.action)
+      .map(q => ({
+        id: q.id,
+        ...q.effects[answers[q.id]].action,
+        type: q.effects[answers[q.id]].type,
+      }));
+    
     return (
       <div className="min-h-screen bg-slate-900">
         {/* Sticky Header */}
@@ -1343,9 +1400,12 @@ export default function ShoreHomeScore() {
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-cyan-500/20 rounded-lg">
-                  <Home className="w-5 h-5 text-cyan-400" />
-                </div>
+                <button 
+                  onClick={() => setStep('results')}
+                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg"
+                >
+                  <ArrowLeft className="w-4 h-4 text-slate-300" />
+                </button>
                 <div>
                   <h1 className="font-bold text-white text-sm">{propertyData?.address}</h1>
                   <p className="text-xs text-slate-400">Zone {propertyData?.floodZone} • BFE {propertyData?.bfe || '--'} ft</p>
@@ -1358,14 +1418,14 @@ export default function ShoreHomeScore() {
                 </div>
                 <div className="flex items-center gap-1 px-3 py-1 bg-emerald-500/20 rounded-full">
                   <DollarSign className="w-4 h-4 text-emerald-400" />
-                  <span className="text-sm font-bold text-emerald-400">${potentialSavings.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-emerald-400">${potentialSavings.toLocaleString()}/yr</span>
                 </div>
               </div>
             </div>
           </div>
         </header>
         
-        <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
           {/* Score Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 flex flex-col items-center justify-center">
@@ -1376,92 +1436,230 @@ export default function ShoreHomeScore() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-slate-700/50 rounded-lg">
                   <p className="text-xs text-slate-400 uppercase">Flood Zone</p>
-                  <p className="text-xl font-bold text-white">{propertyData?.floodZone}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xl font-bold text-white">{propertyData?.floodZone}</p>
+                    <button onClick={() => setShowInfo('floodZone')} className="p-1 hover:bg-slate-600 rounded">
+                      <HelpCircle className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
                 <div className="p-3 bg-slate-700/50 rounded-lg">
                   <p className="text-xs text-slate-400 uppercase">CAFE Required</p>
-                  <p className="text-xl font-bold text-white">{propertyData?.bfe ? `${propertyData.bfe + 4} ft` : '--'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xl font-bold text-white">{propertyData?.bfe ? `${propertyData.bfe + 4} ft` : '--'}</p>
+                    <button onClick={() => setShowInfo('cafe')} className="p-1 hover:bg-slate-600 rounded">
+                      <HelpCircle className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
                 <div className="p-3 bg-slate-700/50 rounded-lg">
-                  <p className="text-xs text-slate-400 uppercase">Annual Savings</p>
+                  <p className="text-xs text-slate-400 uppercase">Est. Annual Savings</p>
                   <p className="text-xl font-bold text-emerald-400">${potentialSavings.toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-slate-700/50 rounded-lg">
                   <p className="text-xs text-slate-400 uppercase">Legacy Window</p>
-                  <p className="text-xl font-bold text-amber-400">{legacyDaysLeft} days</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xl font-bold text-amber-400">{legacyDaysLeft} days</p>
+                    <button onClick={() => setShowInfo('legacy')} className="p-1 hover:bg-slate-600 rounded">
+                      <HelpCircle className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Assessment Summary */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h2 className="font-bold text-white mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-cyan-400" />
-              Your Assessment
-            </h2>
-            <div className="space-y-3">
-              {QUESTIONS.map(q => {
-                const answer = answers[q.id];
-                const effect = answer ? q.effects[answer] : null;
-                const option = q.options.find(o => o.value === answer);
-                
-                return (
+          {/* Action Items */}
+          {actionItems.length > 0 && (
+            <CollapsibleSection 
+              id="actions" 
+              icon={Target} 
+              title="Recommended Actions" 
+              badge={`${actionItems.length} items`}
+            >
+              <div className="space-y-3 mt-3">
+                {actionItems.map((item, i) => (
                   <div
-                    key={q.id}
+                    key={item.id}
                     className={`p-4 rounded-xl border ${
-                      effect?.type === 'positive' ? 'border-emerald-500/30 bg-emerald-500/5' :
-                      effect?.type === 'negative' ? 'border-red-500/30 bg-red-500/5' :
-                      effect?.type === 'warning' ? 'border-amber-500/30 bg-amber-500/5' :
+                      item.type === 'negative' ? 'border-red-500/30 bg-red-500/5' :
+                      item.type === 'warning' ? 'border-amber-500/30 bg-amber-500/5' :
                       'border-slate-600 bg-slate-700/30'
                     }`}
                   >
                     <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-white">{q.question}</p>
-                        <p className="text-sm text-slate-400 mt-1">Your answer: {option?.label || 'Not answered'}</p>
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{item.text}</p>
+                        {item.cost && (
+                          <p className="text-sm text-slate-400 mt-1">
+                            💰 Cost: {item.cost}
+                            {item.savings && <span className="text-emerald-400"> → Saves: {item.savings}</span>}
+                            {item.payback && <span className="text-slate-500"> ({item.payback})</span>}
+                          </p>
+                        )}
+                        {item.note && (
+                          <p className="text-sm text-cyan-400 mt-2">💡 {item.note}</p>
+                        )}
                       </div>
-                      {effect?.type === 'positive' && <CheckCircle className="w-5 h-5 text-emerald-400" />}
-                      {effect?.type === 'negative' && <AlertTriangle className="w-5 h-5 text-red-400" />}
-                      {effect?.type === 'warning' && <AlertCircle className="w-5 h-5 text-amber-400" />}
                     </div>
-                    {effect?.action && (
-                      <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-                        <p className="text-sm text-cyan-400">→ {effect.action.text}</p>
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
           
-          {/* Programs */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <h2 className="font-bold text-white mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-cyan-400" />
-              Programs You May Qualify For
-            </h2>
-            <div className="space-y-3">
+          {/* Programs & Grants */}
+          <CollapsibleSection 
+            id="programs" 
+            icon={DollarSign} 
+            title="Programs & Grants You May Qualify For"
+            badge="3 programs"
+          >
+            <div className="space-y-3 mt-3">
               {Object.entries(EDUCATION.programs).map(([key, program]) => (
-                <div key={key} className="p-4 rounded-xl border border-slate-600 bg-slate-700/30">
+                <div key={key} className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-white">{program.title}</p>
-                      <p className="text-xs text-cyan-400">{program.agency}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-white">{program.title}</p>
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
+                          {program.agency}
+                        </span>
+                      </div>
                       <p className="text-sm text-slate-400 mt-2">{program.description}</p>
+                      {program.eligibility && (
+                        <p className="text-sm text-slate-300 mt-2">
+                          <span className="text-slate-500">Eligibility:</span> {program.eligibility}
+                        </p>
+                      )}
+                      {program.funding && (
+                        <p className="text-sm text-emerald-400 mt-1">
+                          <span className="text-slate-500">Funding:</span> {program.funding}
+                        </p>
+                      )}
                     </div>
                     <a
                       href={program.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 hover:bg-slate-600 rounded-lg"
+                      className="px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-sm font-medium flex items-center gap-1 whitespace-nowrap"
                     >
-                      <ExternalLink className="w-4 h-4 text-slate-400" />
+                      Learn More
+                      <ExternalLink className="w-4 h-4" />
                     </a>
                   </div>
                 </div>
               ))}
+            </div>
+          </CollapsibleSection>
+          
+          {/* Compliance & Deadlines */}
+          <CollapsibleSection 
+            id="compliance" 
+            icon={FileText} 
+            title="Compliance & Deadlines"
+          >
+            <div className="space-y-3 mt-3">
+              <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                  <p className="font-medium text-white">Legacy Window Deadline</p>
+                </div>
+                <p className="text-sm text-slate-300">
+                  Permits submitted before <span className="text-amber-400 font-medium">July 15, 2026</span> may use previous elevation standards.
+                </p>
+                <p className="text-sm text-slate-400 mt-2">
+                  After this date, all new construction and substantial improvements must meet CAFE requirements (BFE + 4 ft).
+                </p>
+                <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                  <p className="text-2xl font-bold text-amber-400">{legacyDaysLeft} days remaining</p>
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-xl border border-slate-600 bg-slate-700/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <p className="font-medium text-white">50% Rule (Substantial Improvement)</p>
+                </div>
+                <p className="text-sm text-slate-300">
+                  If improvements exceed 50% of your home's market value in any 10-year period, the <span className="text-white font-medium">entire structure</span> must be brought up to current flood codes.
+                </p>
+                <p className="text-sm text-cyan-400 mt-2">
+                  💡 Track your improvement costs carefully before starting major projects.
+                </p>
+              </div>
+              
+              {propertyData?.floodZone?.startsWith('V') && (
+                <div className="p-4 rounded-xl border border-slate-600 bg-slate-700/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-5 h-5 text-cyan-400" />
+                    <p className="font-medium text-white">VE Zone Requirements</p>
+                  </div>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• Breakaway walls required below BFE</li>
+                    <li>• Open foundation (piles/piers) required</li>
+                    <li>• No obstructions below elevated floor</li>
+                    <li>• Mechanical equipment must be elevated</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+          
+          {/* Insurance Tips */}
+          <CollapsibleSection 
+            id="insurance" 
+            icon={Shield} 
+            title="Insurance Savings Tips"
+          >
+            <div className="space-y-3 mt-3">
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+                <p className="font-medium text-white mb-2">Ways to Lower Your Premium</p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-slate-300"><span className="text-white">Get an Elevation Certificate</span> - Often saves $500+/year</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-slate-300"><span className="text-white">Elevate above BFE</span> - Each foot above saves hundreds</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-slate-300"><span className="text-white">Install flood vents</span> - Required for compliance, saves on premiums</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-slate-300"><span className="text-white">Shop private insurers</span> - May offer better rates than NFIP</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-xl border border-slate-600 bg-slate-700/30">
+                <p className="font-medium text-white mb-2">NFIP vs Private Insurance</p>
+                <p className="text-sm text-slate-300">
+                  The National Flood Insurance Program (NFIP) is government-backed, but private insurers may offer competitive rates, especially for lower-risk properties.
+                </p>
+                <p className="text-sm text-cyan-400 mt-2">
+                  💡 Get quotes from both to compare coverage and cost.
+                </p>
+              </div>
+            </div>
+          </CollapsibleSection>
+          
+          {/* Save CTA */}
+          <div className="bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 rounded-xl p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <p className="font-bold text-white">Save Your Assessment</p>
+                <p className="text-sm text-slate-400">Create a free account to save your data and get deadline reminders</p>
+              </div>
+              <button
+                onClick={() => setShowInfo('save')}
+                className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-medium whitespace-nowrap"
+              >
+                Save & Get Report
+              </button>
             </div>
           </div>
           
@@ -1471,6 +1669,83 @@ export default function ShoreHomeScore() {
             <p className="mt-1">For informational purposes only. Consult professionals for specific advice.</p>
           </div>
         </main>
+        
+        {/* Info Popups */}
+        <InfoPopup
+          title="Flood Zone Explained"
+          isOpen={showInfo === 'floodZone'}
+          onClose={() => setShowInfo(null)}
+        >
+          {propertyData?.floodZone && EDUCATION.floodZone.zones[propertyData.floodZone] && (
+            <>
+              <p className="font-medium text-white">
+                {EDUCATION.floodZone.zones[propertyData.floodZone].name}
+              </p>
+              <p className="mt-2">{EDUCATION.floodZone.zones[propertyData.floodZone].description}</p>
+              <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+                <p className="text-xs text-slate-400 uppercase mb-1">Requirements</p>
+                <p className="text-sm">{EDUCATION.floodZone.zones[propertyData.floodZone].requirements}</p>
+              </div>
+              <div className="mt-2 p-3 bg-slate-700/50 rounded-lg">
+                <p className="text-xs text-slate-400 uppercase mb-1">Insurance</p>
+                <p className="text-sm">{EDUCATION.floodZone.zones[propertyData.floodZone].insurance}</p>
+              </div>
+            </>
+          )}
+        </InfoPopup>
+        
+        <InfoPopup
+          title="CAFE Requirement"
+          isOpen={showInfo === 'cafe'}
+          onClose={() => setShowInfo(null)}
+        >
+          <p>{EDUCATION.cafe.description}</p>
+          <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+            <p className="text-xs text-slate-400 uppercase mb-1">Impact</p>
+            <p className="text-sm">{EDUCATION.cafe.impact}</p>
+          </div>
+          <div className="mt-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <p className="text-xs text-amber-400 uppercase mb-1">Deadline</p>
+            <p className="text-sm">{EDUCATION.cafe.deadline}</p>
+          </div>
+        </InfoPopup>
+        
+        <InfoPopup
+          title="Legacy Window"
+          isOpen={showInfo === 'legacy'}
+          onClose={() => setShowInfo(null)}
+        >
+          <p>The legacy window allows permits submitted before July 15, 2026 to use previous elevation standards.</p>
+          <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <p className="text-2xl font-bold text-amber-400">{legacyDaysLeft} days remaining</p>
+          </div>
+          <p className="mt-3 text-sm">After this date, all new construction and substantial improvements must meet CAFE requirements (BFE + 4 ft).</p>
+          <p className="mt-2 text-sm text-cyan-400">💡 If you're planning major renovations, consider applying for permits before the deadline.</p>
+        </InfoPopup>
+        
+        <InfoPopup
+          title="Save Your Report"
+          isOpen={showInfo === 'save'}
+          onClose={() => setShowInfo(null)}
+        >
+          <p>Create a free account to:</p>
+          <ul className="list-disc list-inside space-y-2 mt-3">
+            <li>Save your property assessment</li>
+            <li>Download a PDF report</li>
+            <li>Get deadline reminders</li>
+            <li>Connect with contractors</li>
+          </ul>
+          <div className="mt-4 space-y-3">
+            <input
+              type="email"
+              placeholder="Email address"
+              className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500"
+            />
+            <button className="w-full px-4 py-3 bg-cyan-500 hover:bg-cyan-400 text-white rounded-xl font-medium">
+              Create Account
+            </button>
+          </div>
+        </InfoPopup>
       </div>
     );
   }
