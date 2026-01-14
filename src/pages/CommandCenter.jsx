@@ -1092,6 +1092,272 @@ const ThresholdGauge = ({ current, structureValue, permitHistory, proposedWork =
   );
 };
 
+// =============================================================================
+// INSURANCE PREMIUM ESTIMATOR
+// =============================================================================
+const InsuranceEstimator = ({ propertyData, selections }) => {
+  const isYes = (val) => val === 'yes' || val === true;
+  
+  // NFIP Base Premium Calculation (simplified Risk Rating 2.0)
+  const calculatePremium = () => {
+    let basePremium = 800; // NFIP minimum
+    
+    // Distance to coast factor (approximated by flood zone)
+    const floodZone = propertyData.floodZone || 'AE';
+    if (floodZone.startsWith('V')) basePremium += 3500;
+    else if (floodZone === 'AE' || floodZone === 'A') basePremium += 1800;
+    else if (floodZone === 'AO' || floodZone === 'AH') basePremium += 1200;
+    else if (floodZone === 'X') basePremium += 200;
+    
+    // Building coverage amount (based on structure value)
+    const structureValue = propertyData.structureValue || 250000;
+    const coverageAmount = Math.min(structureValue, 250000); // NFIP max
+    basePremium += (coverageAmount / 250000) * 1500;
+    
+    // Elevation relative to BFE (biggest factor in RR2.0)
+    const elevation = Number(selections.current_elevation) || 0;
+    const bfe = propertyData.bfe || 9;
+    const elevDiff = elevation - bfe;
+    
+    if (elevDiff >= 4) basePremium -= 1200;
+    else if (elevDiff >= 2) basePremium -= 800;
+    else if (elevDiff >= 0) basePremium -= 400;
+    else if (elevDiff >= -2) basePremium += 800;
+    else basePremium += 2000;
+    
+    // Foundation type
+    const foundation = selections.foundation_type;
+    if (foundation === 'piles') basePremium -= 600;
+    else if (foundation === 'piers') basePremium -= 400;
+    else if (foundation === 'slab') basePremium += 400;
+    else if (foundation === 'basement') basePremium += 1200;
+    
+    // Flood vents (proper enclosure venting)
+    if (selections.flood_vents > 0) {
+      const sqft = selections.enclosed_sqft || 0;
+      const required = Math.ceil(sqft / 200);
+      if (selections.flood_vents >= required) basePremium -= 300;
+    }
+    
+    // First floor height above ground
+    if (elevation > 0 && bfe > 0) {
+      const heightAboveGround = elevation - (bfe - 4); // Approximate
+      if (heightAboveGround >= 8) basePremium -= 500;
+      else if (heightAboveGround >= 4) basePremium -= 200;
+    }
+    
+    return Math.max(basePremium, 500); // Minimum premium
+  };
+  
+  // Calculate savings from each mitigation measure
+  const calculateSavingsBreakdown = () => {
+    const savings = [];
+    
+    // Elevation Certificate
+    if (isYes(selections.elevation_cert)) {
+      savings.push({ item: 'Elevation Certificate', amount: 450, description: 'Accurate rating vs. worst-case assumption' });
+    } else {
+      savings.push({ item: 'Get Elevation Certificate', amount: 450, potential: true, description: 'Required for accurate rating' });
+    }
+    
+    // Elevation above BFE
+    const elevation = Number(selections.current_elevation) || 0;
+    const bfe = propertyData.bfe || 9;
+    const elevDiff = elevation - bfe;
+    if (elevDiff >= 2) {
+      savings.push({ item: `${elevDiff}ft above BFE`, amount: 800 + (elevDiff * 200), description: 'Each foot above BFE reduces risk' });
+    }
+    
+    // Foundation
+    if (selections.foundation_type === 'piles') {
+      savings.push({ item: 'Elevated Foundation (Piles)', amount: 600, description: 'Lowest flood risk foundation type' });
+    } else if (selections.foundation_type === 'piers') {
+      savings.push({ item: 'Elevated Foundation (Piers)', amount: 400, description: 'Good flood resistance' });
+    }
+    
+    // Flood vents
+    if (selections.flood_vents > 0) {
+      const sqft = selections.enclosed_sqft || 0;
+      const required = Math.ceil(sqft / 200);
+      if (selections.flood_vents >= required) {
+        savings.push({ item: 'Compliant Flood Vents', amount: 300, description: 'Proper enclosure venting' });
+      } else {
+        savings.push({ item: 'Add More Flood Vents', amount: 300, potential: true, description: `Need ${required - selections.flood_vents} more vents` });
+      }
+    } else if (selections.enclosed_sqft > 0) {
+      const required = Math.ceil(selections.enclosed_sqft / 200);
+      savings.push({ item: 'Install Flood Vents', amount: 300, potential: true, description: `Need ${required} ICC-certified vents` });
+    }
+    
+    // Breakaway walls
+    if (isYes(selections.breakaway_walls)) {
+      savings.push({ item: 'Breakaway Walls', amount: 200, description: 'Code-compliant enclosure walls' });
+    }
+    
+    return savings;
+  };
+  
+  // Calculate wind insurance savings
+  const calculateWindSavings = () => {
+    const savings = [];
+    
+    if (selections.roof_type === 'metal_standing') {
+      savings.push({ item: 'Standing Seam Metal Roof', amount: 1500, description: 'Best wind rating' });
+    } else if (selections.roof_type === 'metal_screwdown') {
+      savings.push({ item: 'Metal Roof', amount: 1000, description: 'Excellent wind resistance' });
+    } else if (selections.roof_type === 'architectural') {
+      savings.push({ item: 'Architectural Shingles', amount: 300, description: 'Good wind rating' });
+    }
+    
+    if (isYes(selections.roof_deck)) {
+      savings.push({ item: 'Sealed Roof Deck', amount: 600, description: 'Secondary water barrier' });
+    } else {
+      savings.push({ item: 'Add Sealed Roof Deck', amount: 600, potential: true, description: 'Add during next roof replacement' });
+    }
+    
+    if (selections.windows_impact === 'both') {
+      savings.push({ item: 'Impact Glass + Shutters', amount: 900, description: 'Maximum opening protection' });
+    } else if (selections.windows_impact === 'impact') {
+      savings.push({ item: 'Impact-Rated Windows', amount: 700, description: 'Debris protection' });
+    } else if (selections.windows_impact === 'accordion') {
+      savings.push({ item: 'Hurricane Shutters', amount: 400, description: 'Opening protection' });
+    } else {
+      savings.push({ item: 'Add Opening Protection', amount: 700, potential: true, description: 'Impact windows or shutters' });
+    }
+    
+    if (isYes(selections.garage_door)) {
+      savings.push({ item: 'Wind-Rated Garage Door', amount: 200, description: 'Prevents pressure failure' });
+    }
+    
+    // Roof age
+    const roofAge = Number(selections.roof_age);
+    if (roofAge && roofAge <= 10) {
+      savings.push({ item: 'Roof Under 10 Years', amount: 400, description: 'Replacement cost coverage' });
+    } else if (roofAge > 15) {
+      savings.push({ item: 'Replace Aging Roof', amount: 400, potential: true, description: 'Avoid ACV penalty' });
+    }
+    
+    return savings;
+  };
+  
+  const basePremium = calculatePremium();
+  const floodSavings = calculateSavingsBreakdown();
+  const windSavings = calculateWindSavings();
+  
+  const currentFloodSavings = floodSavings.filter(s => !s.potential).reduce((sum, s) => sum + s.amount, 0);
+  const potentialFloodSavings = floodSavings.filter(s => s.potential).reduce((sum, s) => sum + s.amount, 0);
+  const currentWindSavings = windSavings.filter(s => !s.potential).reduce((sum, s) => sum + s.amount, 0);
+  const potentialWindSavings = windSavings.filter(s => s.potential).reduce((sum, s) => sum + s.amount, 0);
+  
+  const totalCurrentSavings = currentFloodSavings + currentWindSavings;
+  const totalPotentialSavings = potentialFloodSavings + potentialWindSavings;
+  
+  return (
+    <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-emerald-400" />
+          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Insurance Premium Estimator</h3>
+        </div>
+        <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">
+          Based on NFIP Risk Rating 2.0
+        </span>
+      </div>
+      
+      {/* Premium Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-slate-900 rounded-xl p-4 text-center">
+          <p className="text-xs text-slate-500 mb-1">Est. Base Premium</p>
+          <p className="text-3xl font-bold text-white">${basePremium.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">per year</p>
+        </div>
+        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-4 text-center">
+          <p className="text-xs text-emerald-400 mb-1">Your Current Savings</p>
+          <p className="text-3xl font-bold text-emerald-400">${totalCurrentSavings.toLocaleString()}</p>
+          <p className="text-xs text-emerald-400/70">per year</p>
+        </div>
+        <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-xl p-4 text-center">
+          <p className="text-xs text-cyan-400 mb-1">Potential Additional</p>
+          <p className="text-3xl font-bold text-cyan-400">+${totalPotentialSavings.toLocaleString()}</p>
+          <p className="text-xs text-cyan-400/70">if you add improvements</p>
+        </div>
+      </div>
+      
+      {/* 10-Year Impact */}
+      <div className="bg-gradient-to-r from-emerald-900/30 to-cyan-900/30 rounded-xl p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-slate-300">10-Year Savings Impact</p>
+            <p className="text-xs text-slate-500">Current savings + potential improvements</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-white">${((totalCurrentSavings + totalPotentialSavings) * 10).toLocaleString()}</p>
+            <p className="text-xs text-emerald-400">over 10 years</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Savings Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Flood Insurance */}
+        <div>
+          <h4 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+            <Droplets className="w-4 h-4" />
+            Flood Insurance (NFIP)
+          </h4>
+          <div className="space-y-2">
+            {floodSavings.map((item, i) => (
+              <div key={i} className={`flex items-center justify-between p-2 rounded-lg ${
+                item.potential ? 'bg-slate-900/50 border border-dashed border-slate-600' : 'bg-slate-900'
+              }`}>
+                <div className="flex-1">
+                  <p className={`text-xs font-medium ${item.potential ? 'text-slate-400' : 'text-slate-200'}`}>
+                    {item.potential && '+ '}{item.item}
+                  </p>
+                  <p className="text-[10px] text-slate-500">{item.description}</p>
+                </div>
+                <span className={`text-sm font-bold ${item.potential ? 'text-cyan-400' : 'text-emerald-400'}`}>
+                  ${item.amount}/yr
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Wind Insurance */}
+        <div>
+          <h4 className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
+            <Wind className="w-4 h-4" />
+            Wind/Homeowner Insurance
+          </h4>
+          <div className="space-y-2">
+            {windSavings.map((item, i) => (
+              <div key={i} className={`flex items-center justify-between p-2 rounded-lg ${
+                item.potential ? 'bg-slate-900/50 border border-dashed border-slate-600' : 'bg-slate-900'
+              }`}>
+                <div className="flex-1">
+                  <p className={`text-xs font-medium ${item.potential ? 'text-slate-400' : 'text-slate-200'}`}>
+                    {item.potential && '+ '}{item.item}
+                  </p>
+                  <p className="text-[10px] text-slate-500">{item.description}</p>
+                </div>
+                <span className={`text-sm font-bold ${item.potential ? 'text-cyan-400' : 'text-emerald-400'}`}>
+                  ${item.amount}/yr
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      {/* Disclaimer */}
+      <p className="text-[10px] text-slate-600 mt-4 text-center">
+        Estimates based on NFIP Risk Rating 2.0 factors. Actual premiums vary by insurer. Contact your agent for exact quotes.
+      </p>
+    </div>
+  );
+};
+
 const ScoreGauge = ({ score, maxScore = 100 }) => {
   const percentage = (score / maxScore) * 100;
   const circumference = 2 * Math.PI * 45;
@@ -1135,6 +1401,210 @@ const ScoreGauge = ({ score, maxScore = 100 }) => {
       </div>
     </div>
   );
+};
+
+// =============================================================================
+// PDF REPORT GENERATOR
+// =============================================================================
+const generatePDFReport = (propertyData, selections, score, insuranceSavings) => {
+  const isYes = (val) => val === 'yes' || val === true;
+  
+  // Create HTML content for the report
+  const reportDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', month: 'long', day: 'numeric' 
+  });
+  
+  const getScoreLabel = (s) => {
+    if (s >= 70) return 'WELL PROTECTED';
+    if (s >= 40) return 'MODERATE RISK';
+    return 'VULNERABLE';
+  };
+  
+  const getScoreColor = (s) => {
+    if (s >= 70) return '#10b981';
+    if (s >= 40) return '#f59e0b';
+    return '#ef4444';
+  };
+  
+  // Build checklist summary
+  const checklistSummary = [];
+  
+  // Wind items
+  if (selections.roof_type) checklistSummary.push({ category: 'Wind', item: 'Roof Type', value: selections.roof_type, status: 'complete' });
+  if (selections.roof_age) checklistSummary.push({ category: 'Wind', item: 'Roof Age', value: `${selections.roof_age} years`, status: selections.roof_age <= 15 ? 'good' : 'warning' });
+  if (isYes(selections.roof_deck)) checklistSummary.push({ category: 'Wind', item: 'Sealed Roof Deck', value: 'Yes', status: 'complete' });
+  if (selections.windows_impact && selections.windows_impact !== 'none') checklistSummary.push({ category: 'Wind', item: 'Window Protection', value: selections.windows_impact, status: 'complete' });
+  if (isYes(selections.garage_door)) checklistSummary.push({ category: 'Wind', item: 'Wind-Rated Garage Door', value: 'Yes', status: 'complete' });
+  
+  // Flood items
+  if (isYes(selections.elevation_cert)) checklistSummary.push({ category: 'Flood', item: 'Elevation Certificate', value: 'Yes', status: 'complete' });
+  if (selections.current_elevation) checklistSummary.push({ category: 'Flood', item: 'Current Elevation', value: `${selections.current_elevation} ft`, status: 'complete' });
+  if (selections.foundation_type) checklistSummary.push({ category: 'Flood', item: 'Foundation Type', value: selections.foundation_type, status: 'complete' });
+  if (selections.flood_vents) checklistSummary.push({ category: 'Flood', item: 'Flood Vents', value: `${selections.flood_vents} vents`, status: 'complete' });
+  
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ShoreHomeScore Report - ${propertyData.address || propertyData.zipCode}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.5; }
+    .page { max-width: 800px; margin: 0 auto; padding: 40px; }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #0891b2; }
+    .header h1 { font-size: 28px; color: #0891b2; margin-bottom: 5px; }
+    .header .subtitle { color: #64748b; font-size: 14px; }
+    .header .date { color: #94a3b8; font-size: 12px; margin-top: 10px; }
+    
+    .score-section { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; }
+    .score-circle { width: 140px; height: 140px; border-radius: 50%; border: 8px solid ${getScoreColor(score)}; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .score-number { font-size: 48px; font-weight: bold; }
+    .score-label { font-size: 11px; color: ${getScoreColor(score)}; font-weight: bold; margin-top: 5px; }
+    .score-details { flex: 1; margin-left: 30px; }
+    .score-details h2 { font-size: 20px; margin-bottom: 10px; }
+    .score-details p { color: #94a3b8; font-size: 14px; }
+    
+    .savings-banner { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 20px 30px; border-radius: 12px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+    .savings-banner h3 { font-size: 16px; }
+    .savings-banner .amount { font-size: 32px; font-weight: bold; }
+    .savings-banner .period { font-size: 12px; opacity: 0.8; }
+    
+    .property-section { background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+    .property-section h3 { color: #0891b2; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+    .property-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .property-item label { font-size: 11px; color: #64748b; display: block; }
+    .property-item span { font-size: 16px; font-weight: 600; color: #1e293b; }
+    
+    .checklist-section { margin-bottom: 30px; }
+    .checklist-section h3 { color: #0891b2; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+    .checklist-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item .label { color: #475569; }
+    .checklist-item .value { font-weight: 600; }
+    .status-complete { color: #10b981; }
+    .status-warning { color: #f59e0b; }
+    .status-missing { color: #94a3b8; }
+    
+    .recommendations { background: #fffbeb; border: 1px solid #fcd34d; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+    .recommendations h3 { color: #b45309; font-size: 14px; margin-bottom: 15px; }
+    .recommendations ul { margin-left: 20px; }
+    .recommendations li { margin-bottom: 8px; color: #92400e; }
+    
+    .footer { text-align: center; padding-top: 30px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 11px; }
+    .footer a { color: #0891b2; }
+    
+    @media print { .page { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1>🏠 ShoreHomeScore Report</h1>
+      <div class="subtitle">Coastal Resilience Assessment for NJ Shore Properties</div>
+      <div class="date">Generated on ${reportDate}</div>
+    </div>
+    
+    <div class="score-section">
+      <div class="score-circle">
+        <div class="score-number">${score}</div>
+        <div class="score-label">${getScoreLabel(score)}</div>
+      </div>
+      <div class="score-details">
+        <h2>Resilience Score: ${score}/100</h2>
+        <p>Your property's protection level based on structural features, flood mitigation, and compliance status.</p>
+      </div>
+    </div>
+    
+    <div class="savings-banner">
+      <div>
+        <h3>Estimated Annual Insurance Savings</h3>
+        <div class="period">Based on current mitigation measures</div>
+      </div>
+      <div style="text-align: right;">
+        <div class="amount">$${insuranceSavings.toLocaleString()}</div>
+        <div class="period">per year • $${(insuranceSavings * 10).toLocaleString()} over 10 years</div>
+      </div>
+    </div>
+    
+    <div class="property-section">
+      <h3>📍 Property Information</h3>
+      <div class="property-grid">
+        <div class="property-item">
+          <label>Address</label>
+          <span>${propertyData.address || 'Not provided'}</span>
+        </div>
+        <div class="property-item">
+          <label>Zip Code</label>
+          <span>${propertyData.zipCode || 'N/A'}</span>
+        </div>
+        <div class="property-item">
+          <label>Flood Zone</label>
+          <span>${propertyData.floodZone || 'Unknown'}</span>
+        </div>
+        <div class="property-item">
+          <label>Base Flood Elevation</label>
+          <span>${propertyData.bfe ? propertyData.bfe + ' ft' : 'Unknown'}</span>
+        </div>
+        <div class="property-item">
+          <label>Square Footage</label>
+          <span>${propertyData.squareFootage ? propertyData.squareFootage.toLocaleString() + ' sq ft' : 'N/A'}</span>
+        </div>
+        <div class="property-item">
+          <label>Structure Value</label>
+          <span>${propertyData.structureValue ? '$' + propertyData.structureValue.toLocaleString() : 'N/A'}</span>
+        </div>
+        <div class="property-item">
+          <label>CAFE Requirement</label>
+          <span>${propertyData.bfe ? (propertyData.bfe + 4) + ' ft' : 'BFE + 4 ft'}</span>
+        </div>
+        <div class="property-item">
+          <label>Municipality</label>
+          <span>${propertyData.municipality || 'N/A'}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="checklist-section">
+      <h3>✅ Completed Mitigation Measures</h3>
+      ${checklistSummary.map(item => `
+        <div class="checklist-item">
+          <span class="label">${item.category}: ${item.item}</span>
+          <span class="value status-${item.status}">${item.value}</span>
+        </div>
+      `).join('')}
+    </div>
+    
+    <div class="recommendations">
+      <h3>📋 Recommended Next Steps</h3>
+      <ul>
+        ${!isYes(selections.elevation_cert) ? '<li><strong>Get an Elevation Certificate</strong> - Required for accurate flood insurance rating. Could save $500-$2,000/year.</li>' : ''}
+        ${!isYes(selections.roof_deck) ? '<li><strong>Add sealed roof deck</strong> during next roof replacement. Saves 10-15% on wind premiums.</li>' : ''}
+        ${selections.windows_impact === 'none' || !selections.windows_impact ? '<li><strong>Install hurricane shutters or impact windows</strong> - Significant insurance savings and storm protection.</li>' : ''}
+        ${!selections.flood_vents && selections.enclosed_sqft > 0 ? '<li><strong>Install ICC-certified flood vents</strong> in enclosed areas below BFE.</li>' : ''}
+        ${!isYes(selections.water_shutoff) ? '<li><strong>Install smart water shutoff valve</strong> - Prevents water damage and may reduce premiums.</li>' : ''}
+        <li><strong>Review permit history</strong> to track substantial improvement threshold status.</li>
+      </ul>
+    </div>
+    
+    <div class="footer">
+      <p>This report is for informational purposes only. Consult with licensed professionals for specific advice.</p>
+      <p style="margin-top: 10px;">Generated by <a href="https://shore-home-score.vercel.app">ShoreHomeScore</a> • NJ Shore Resilience Platform</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  // Open in new window for printing/saving
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
+  
+  // Auto-trigger print dialog after a short delay
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
 };
 
 const CountdownCard = ({ title, date, icon: Icon, color, description, info }) => {
@@ -2395,6 +2865,15 @@ export default function CommandCenter() {
                 <span className="text-xs">Glossary</span>
               </button>
               
+              {/* Download Report Button */}
+              <button 
+                onClick={() => generatePDFReport(propertyData, selections, score, insuranceSavings)}
+                className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 rounded-full transition-colors border border-cyan-500/30"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-xs">Report</span>
+              </button>
+              
               <button className="p-2 text-slate-400 hover:text-white"><Bell className="w-5 h-5" /></button>
               <button className="p-2 text-slate-400 hover:text-white"><Settings className="w-5 h-5" /></button>
             </div>
@@ -2581,6 +3060,9 @@ export default function CommandCenter() {
             )}
           </div>
         )}
+        
+        {/* Insurance Premium Estimator */}
+        <InsuranceEstimator propertyData={propertyData} selections={selections} />
         
         {/* Code Updates */}
         <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4">
