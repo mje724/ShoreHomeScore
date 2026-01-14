@@ -1585,9 +1585,8 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
   const [lookupSuccess, setLookupSuccess] = useState(false);
   const [claimsData, setClaimsData] = useState(null);
   
-  // FEMA Flood Zone Lookup
+  // FEMA Flood Zone Lookup - uses our serverless API to avoid CORS
   const lookupFloodData = async () => {
-    const fullAddress = `${formData.address}, ${formData.zipCode}`;
     if (!formData.address || !formData.zipCode) {
       setLookupError('Please enter both address and zip code');
       return;
@@ -1598,98 +1597,42 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
     setLookupSuccess(false);
     
     try {
-      // Step 1: Geocode the address using a CORS-friendly proxy
-      // Using allorigins.win as a free CORS proxy
-      const censusUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=Public_AR_Current&format=json`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(censusUrl)}`;
+      // Call our serverless API endpoint
+      const apiUrl = `/api/fema-lookup?address=${encodeURIComponent(formData.address)}&zipCode=${encodeURIComponent(formData.zipCode)}`;
       
-      const geocodeResponse = await fetch(proxyUrl);
-      const proxyData = await geocodeResponse.json();
-      const geocodeData = JSON.parse(proxyData.contents);
+      const response = await fetch(apiUrl);
+      const data = await response.json();
       
-      if (!geocodeData.result?.addressMatches?.length) {
-        setLookupError('Address not found. Try adding city name (e.g., "123 Ocean Ave, Point Pleasant Beach")');
+      if (!response.ok) {
+        setLookupError(data.error || 'Lookup failed. Try adding city name to address.');
         setIsLookingUp(false);
         return;
       }
       
-      const { x: lng, y: lat } = geocodeData.result.addressMatches[0].coordinates;
+      // Update form with FEMA data
+      setFormData(prev => ({
+        ...prev,
+        floodZone: data.floodZone || 'X',
+        bfe: data.bfe || prev.bfe,
+        femaVerified: true,
+        coordinates: data.coordinates
+      }));
       
-      // Step 2: Query FEMA NFHL for flood zone data (this one usually works without proxy)
-      const femaUrl = `https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query?where=1%3D1&geometry=${lng}%2C${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE%2CSTATIC_BFE%2CDEPTH%2CZONE_SUBTY&returnGeometry=false&f=json`;
-      
-      let femaData;
-      try {
-        const femaResponse = await fetch(femaUrl);
-        femaData = await femaResponse.json();
-      } catch (femaErr) {
-        // If direct fails, try through proxy
-        const femaProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(femaUrl)}`;
-        const femaProxyResponse = await fetch(femaProxyUrl);
-        const femaProxyData = await femaProxyResponse.json();
-        femaData = JSON.parse(femaProxyData.contents);
+      // Set claims data if available
+      if (data.claims) {
+        setClaimsData({
+          totalClaims: data.claims.totalClaims,
+          totalPayout: data.claims.totalPayout,
+          avgPayout: data.claims.avgPayout,
+          since: '1978'
+        });
       }
       
-      if (femaData.features?.length > 0) {
-        const feature = femaData.features[0].attributes;
-        const floodZone = feature.FLD_ZONE || 'X';
-        const bfe = feature.STATIC_BFE || null;
-        
-        setFormData(prev => ({
-          ...prev,
-          floodZone: floodZone,
-          bfe: bfe || prev.bfe,
-          femaVerified: true,
-          coordinates: { lat, lng }
-        }));
-        
-        setLookupSuccess(true);
-      } else {
-        // No flood zone found - likely in Zone X (minimal risk)
-        setFormData(prev => ({
-          ...prev,
-          floodZone: 'X',
-          femaVerified: true,
-          coordinates: { lat, lng }
-        }));
-        setLookupSuccess(true);
-      }
-      
-      // Step 3: Get neighborhood claims data from OpenFEMA
-      try {
-        const claimsUrl = `https://www.fema.gov/api/open/v2/FimaNfipClaims?$filter=reportedZipcode%20eq%20%27${formData.zipCode}%27&$top=1000`;
-        let claimsJson;
-        try {
-          const claimsResponse = await fetch(claimsUrl);
-          claimsJson = await claimsResponse.json();
-        } catch (claimsErr) {
-          // Try through proxy if direct fails
-          const claimsProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(claimsUrl)}`;
-          const claimsProxyResponse = await fetch(claimsProxyUrl);
-          const claimsProxyData = await claimsProxyResponse.json();
-          claimsJson = JSON.parse(claimsProxyData.contents);
-        }
-        
-        if (claimsJson.FimaNfipClaims?.length > 0) {
-          const claims = claimsJson.FimaNfipClaims;
-          const totalClaims = claims.length;
-          const totalPayout = claims.reduce((sum, c) => sum + (c.amountPaidOnBuildingClaim || 0) + (c.amountPaidOnContentsClaim || 0), 0);
-          const avgPayout = totalClaims > 0 ? totalPayout / totalClaims : 0;
-          
-          setClaimsData({
-            totalClaims,
-            totalPayout,
-            avgPayout,
-            since: '1978'
-          });
-        }
-      } catch (claimsErr) {
-        console.log('Claims lookup failed (non-critical):', claimsErr);
-      }
+      setLookupSuccess(true);
       
     } catch (err) {
       console.error('FEMA lookup error:', err);
-      setLookupError('Lookup failed. Using default values for your zip code.');
+      setLookupError('Lookup failed. Please try again.');
     }
     
     setIsLookingUp(false);
