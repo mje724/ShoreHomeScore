@@ -2130,18 +2130,24 @@ const PropertyEditModal = ({ isOpen, onClose, propertyData, onSave }) => {
       tidal: zipInfo.tidal ?? prev.tidal,
       pricePerSqft: zipInfo.pricePerSqft || 300,
     }));
-    // Recalculate values if sqft already entered
-    if (prev.squareFootage > 0) {
-      const ppsf = zipInfo.pricePerSqft || 300;
-      const estimatedValue = prev.squareFootage * ppsf;
-      const structureValue = Math.round(estimatedValue * (1 - LAND_VALUE_PERCENT));
-      setFormData(p => ({
-        ...p,
-        homeValue: estimatedValue,
-        structureValue: structureValue,
-      }));
-    }
   };
+  
+  // Recalculate values when zip changes (separate effect)
+  useEffect(() => {
+    if (formData.squareFootage > 0 && formData.zipCode) {
+      const zipInfo = ZIP_DATA[formData.zipCode];
+      if (zipInfo) {
+        const ppsf = zipInfo.pricePerSqft || 300;
+        const estimatedValue = formData.squareFootage * ppsf;
+        const structureValue = Math.round(estimatedValue * (1 - LAND_VALUE_PERCENT));
+        setFormData(prev => ({
+          ...prev,
+          homeValue: estimatedValue,
+          structureValue: structureValue,
+        }));
+      }
+    }
+  }, [formData.zipCode]);
   
   const handleSqFtChange = (sqft) => {
     const value = parseInt(sqft) || 0;
