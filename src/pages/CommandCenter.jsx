@@ -397,7 +397,7 @@ export default function ShoreHomeScore() {
     setAddressLoading(true);
     setAddressError('');
     
-    // Extract zip and find matching town
+    // Extract zip and city from components OR parse from address string
     let zip = '';
     let city = '';
     
@@ -408,38 +408,49 @@ export default function ShoreHomeScore() {
       });
     }
     
-    // Try to match town by zip or name
+    // If no components, parse from address string
+    if (!zip || !city) {
+      // Try to extract zip code (5 digits)
+      const zipMatch = addr.match(/\b(\d{5})\b/);
+      if (zipMatch) zip = zipMatch[1];
+      
+      // Try to match town names in the address
+      const addrLower = addr.toLowerCase();
+      for (const t of TOWNS) {
+        if (addrLower.includes(t.name.toLowerCase())) {
+          city = t.name;
+          if (!zip) zip = t.zip;
+          break;
+        }
+      }
+    }
+    
+    // Try to match town by zip first (most reliable)
     let matchedTown = TOWNS.find(t => t.zip === zip);
+    
+    // If no zip match, try by city name
     if (!matchedTown && city) {
-      matchedTown = TOWNS.find(t => t.name.toLowerCase().includes(city.toLowerCase()) || city.toLowerCase().includes(t.name.toLowerCase()));
+      matchedTown = TOWNS.find(t => 
+        t.name.toLowerCase() === city.toLowerCase() ||
+        t.name.toLowerCase().includes(city.toLowerCase()) || 
+        city.toLowerCase().includes(t.name.toLowerCase())
+      );
+    }
+    
+    // If still no match, try partial match on address
+    if (!matchedTown) {
+      const addrLower = addr.toLowerCase();
+      matchedTown = TOWNS.find(t => addrLower.includes(t.name.toLowerCase()));
     }
     
     if (matchedTown) {
+      // Use our verified town data (always reliable)
       setTown(matchedTown);
       setAddressLoading(false);
     } else {
-      // Try FEMA API lookup
-      try {
-        const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(addr)}`);
-        const data = await res.json();
-        
-        if (data.success && data.floodZone) {
-          // Create custom town data from FEMA response
-          setTown({
-            name: city || 'Your Property',
-            county: data.county || 'Unknown',
-            zip: zip || '00000',
-            zone: data.floodZone,
-            bfe: data.bfe || 10,
-          });
-        } else {
-          setAddressError('We couldn\'t find flood data for this address. Try selecting your town below.');
-          setShowTownFallback(true);
-        }
-      } catch (e) {
-        setAddressError('Lookup failed. Please select your town below.');
-        setShowTownFallback(true);
-      }
+      // Address not in our coverage area - show fallback
+      setAddressError('This address isn\'t in our NJ shore coverage area yet. Please select the nearest town below.');
+      setShowTownFallback(true);
       setAddressLoading(false);
     }
   };
