@@ -4,12 +4,13 @@ import {
   Home, Shield, Droplets, Wind, FileText, AlertTriangle,
   CheckCircle, ChevronRight, ChevronDown, DollarSign, MapPin,
   X, HelpCircle, ArrowRight, ArrowLeft, Info, Clock, Target,
-  Zap, TrendingUp, ExternalLink, Mail, Lock, Building, Search,
-  Check, AlertCircle, Loader
+  Zap, TrendingUp, ExternalLink, Building, Search,
+  Check, AlertCircle, Loader, Thermometer, TreePine, Scale,
+  Cpu, Waves, Umbrella
 } from 'lucide-react';
 
 // =============================================================================
-// SHORE TOWNS DATA - Our source of truth
+// SHORE TOWNS DATA
 // =============================================================================
 const SHORE_TOWNS = [
   { name: 'Asbury Park', zip: '07712', county: 'Monmouth', bfe: 9, zone: 'AE' },
@@ -66,140 +67,187 @@ const SHORE_TOWNS = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 // =============================================================================
+// CATEGORIES WITH ITEMS - Each has toggles OR selectable options
+// =============================================================================
+const CATEGORIES = [
+  {
+    id: 'legalShield',
+    name: 'Legal Shield',
+    subtitle: 'Documentation',
+    icon: Scale,
+    color: 'purple',
+    maxPoints: 500,
+    items: [
+      { id: 'elevationCert', label: 'Elevation Certificate', type: 'toggle', points: 150, helpText: 'Official document showing your home\'s elevation relative to BFE. Without one, insurers assume worst case and charge maximum rates.' },
+      { id: 'preImprovementAppraisal', label: 'Pre-Improvement Appraisal', type: 'toggle', points: 100, helpText: 'Documented home value before renovations. Critical for 50% rule compliance - proves your starting point.' },
+      { id: 'permitsCompleted', label: 'All Permits Closed', type: 'toggle', points: 100, helpText: 'All construction permits properly closed with final inspections. Open permits can delay sales and insurance claims.' },
+      { id: 'floodZoneLOMA', label: 'Flood Zone LOMA', type: 'toggle', points: 75, helpText: 'Letter of Map Amendment - official FEMA determination that your property is actually in a lower-risk zone than mapped.' },
+      { id: 'insuranceAudit', label: 'Insurance Coverage Audit', type: 'toggle', points: 75, helpText: 'Professional review ensuring your coverage matches your actual risk and home value. Often finds savings or gaps.' },
+    ]
+  },
+  {
+    id: 'vitalSystems',
+    name: 'Vital Systems',
+    subtitle: 'Equipment protection',
+    icon: Zap,
+    color: 'yellow',
+    maxPoints: 600,
+    items: [
+      { 
+        id: 'hvacLocation', 
+        label: 'HVAC Location', 
+        type: 'select',
+        helpText: 'Location of your heating/cooling equipment. Ground-level units are destroyed in floods.',
+        options: [
+          { value: 'ground', label: 'Ground Level', sublabel: 'At risk of flood damage', points: 0 },
+          { value: 'elevated', label: 'Elevated (+4ft)', sublabel: 'Protected from flooding', points: 300 },
+        ]
+      },
+      { id: 'elevatedElectrical', label: 'Elevated Electrical Panel', type: 'toggle', points: 150, helpText: 'Main electrical panel raised above flood level. Prevents electrocution hazard and costly rewiring after floods.' },
+      { id: 'elevatedWaterHeater', label: 'Elevated Water Heater', type: 'toggle', points: 75, helpText: 'Water heater raised above flood level or tankless unit mounted high on wall.' },
+      { id: 'generatorSwitch', label: 'Generator Transfer Switch', type: 'toggle', points: 75, helpText: 'Safely connect a generator during power outages without backfeeding the grid.' },
+    ]
+  },
+  {
+    id: 'siteDefense',
+    name: 'Site Defense',
+    subtitle: 'Drainage & landscaping',
+    icon: TreePine,
+    color: 'green',
+    maxPoints: 400,
+    items: [
+      { 
+        id: 'drivewaySurface', 
+        label: 'Driveway Surface', 
+        type: 'select',
+        helpText: 'Permeable surfaces let water drain into ground instead of running toward your home.',
+        options: [
+          { value: 'asphalt', label: 'Asphalt/Concrete', sublabel: 'Water runs off toward home', points: 0 },
+          { value: 'permeable', label: 'Permeable Pavers', sublabel: 'Water drains into ground', points: 150 },
+        ]
+      },
+      { id: 'rainGarden', label: 'Rain Garden', type: 'toggle', points: 100, helpText: 'Landscaped depression that collects and absorbs stormwater runoff.' },
+      { id: 'frenchDrain', label: 'French Drain System', type: 'toggle', points: 75, helpText: 'Underground drainage that redirects water away from your foundation.' },
+      { id: 'yardGrading', label: 'Proper Yard Grading', type: 'toggle', points: 75, helpText: 'Ground slopes away from foundation, directing water away from the home.' },
+    ]
+  },
+  {
+    id: 'thermalShield',
+    name: 'Thermal Shield',
+    subtitle: 'Energy efficiency',
+    icon: Thermometer,
+    color: 'orange',
+    maxPoints: 500,
+    items: [
+      { id: 'atticInsulation', label: 'R-60 Attic Insulation', type: 'toggle', points: 150, helpText: 'High R-value attic insulation reduces energy costs and may qualify for utility rebates.' },
+      { id: 'wallInsulation', label: 'Wall Insulation', type: 'toggle', points: 100, helpText: 'Insulated exterior walls improve energy efficiency and comfort.' },
+      { id: 'continuousInsulation', label: 'Continuous Exterior Insulation', type: 'toggle', points: 150, helpText: 'Foam board or similar on exterior walls eliminates thermal bridging.' },
+      { id: 'airSealing', label: 'Professional Air Sealing', type: 'toggle', points: 100, helpText: 'Sealing gaps and cracks throughout the home to prevent air leakage.' },
+    ]
+  },
+  {
+    id: 'activeDefense',
+    name: 'Active Defense',
+    subtitle: 'Smart technology',
+    icon: Cpu,
+    color: 'pink',
+    maxPoints: 500,
+    items: [
+      { id: 'smartWaterShutoff', label: 'Smart Water Shutoff', type: 'toggle', points: 125, helpText: 'Automatically shuts off water when leak is detected. Can prevent catastrophic water damage.' },
+      { id: 'leakSensors', label: 'Leak Sensors', type: 'toggle', points: 75, helpText: 'Sensors near water heater, washing machine, under sinks alert you to leaks early.' },
+      { id: 'wholeBattery', label: 'Whole-Home Battery', type: 'toggle', points: 200, helpText: 'Battery backup system keeps critical systems running during outages.' },
+      { id: 'floodMonitor', label: 'Flood Level Monitor', type: 'toggle', points: 100, helpText: 'Sensor that monitors nearby water levels and alerts you to rising flood risk.' },
+    ]
+  },
+  {
+    id: 'floodArmor',
+    name: 'Flood Armor',
+    subtitle: 'Flood protection',
+    icon: Waves,
+    color: 'cyan',
+    maxPoints: 600,
+    items: [
+      { 
+        id: 'foundationType', 
+        label: 'Foundation Type', 
+        type: 'select',
+        helpText: 'Foundation determines how water interacts with your home during floods.',
+        options: [
+          { value: 'basement', label: 'Basement', sublabel: 'Highest flood risk', points: 0 },
+          { value: 'slab', label: 'Slab on Grade', sublabel: 'Some flood exposure', points: 50 },
+          { value: 'crawl', label: 'Crawl Space', sublabel: 'Moderate protection', points: 100 },
+          { value: 'piles', label: 'Piles/Stilts', sublabel: 'Best flood protection', points: 200 },
+        ]
+      },
+      { id: 'floodVents', label: 'Engineered Flood Vents', type: 'toggle', points: 150, helpText: 'ICC-certified vents that automatically allow water to flow through enclosed areas, equalizing pressure.' },
+      { id: 'breakawayWalls', label: 'Breakaway Walls', type: 'toggle', points: 100, helpText: 'Walls designed to collapse under wave action without damaging main structure. Required in V zones.' },
+      { id: 'floodResistantMaterials', label: 'Flood-Resistant Materials', type: 'toggle', points: 100, helpText: 'Concrete, tile, marine-grade plywood below flood level instead of drywall and carpet.' },
+      { id: 'backflowValve', label: 'Sewer Backflow Valve', type: 'toggle', points: 50, helpText: 'Prevents sewage from backing up into your home during floods.' },
+    ]
+  },
+  {
+    id: 'windShield',
+    name: 'Wind Shield',
+    subtitle: 'Storm protection',
+    icon: Wind,
+    color: 'blue',
+    maxPoints: 700,
+    items: [
+      { 
+        id: 'roofType', 
+        label: 'Roof Type', 
+        type: 'select',
+        helpText: 'Roof material significantly affects wind resistance and insurance premiums.',
+        options: [
+          { value: '3tab', label: '3-Tab Shingle', sublabel: 'Basic protection', points: 50 },
+          { value: 'architectural', label: 'Architectural Shingle', sublabel: 'Good wind rating', points: 100 },
+          { value: 'metal', label: 'Metal Standing Seam', sublabel: 'Excellent protection', points: 200 },
+        ]
+      },
+      { 
+        id: 'roofAge', 
+        label: 'Roof Age', 
+        type: 'select',
+        helpText: 'Newer roofs have better wind resistance. Many insurers won\'t cover roofs over 15-20 years.',
+        options: [
+          { value: 'old', label: '15+ years', sublabel: 'May need replacement', points: 0 },
+          { value: 'mid', label: '5-15 years', sublabel: 'Good condition', points: 75 },
+          { value: 'new', label: 'Under 5 years', sublabel: 'Maximum credits', points: 150 },
+        ]
+      },
+      { id: 'hipRoof', label: 'Hip Roof (4 slopes)', type: 'toggle', points: 100, helpText: 'Hip roofs perform significantly better in high winds than gable roofs.' },
+      { id: 'impactWindows', label: 'Impact-Rated Windows', type: 'toggle', points: 150, helpText: 'Windows rated to withstand wind-borne debris. Major insurance credit.' },
+      { id: 'reinforcedGarage', label: 'Reinforced Garage Door', type: 'toggle', points: 100, helpText: 'Wind-rated garage door prevents the most common point of structural failure.' },
+    ]
+  },
+];
+
+// =============================================================================
 // EDUCATIONAL CONTENT
 // =============================================================================
 const EDUCATION = {
   floodZone: {
     VE: { name: 'VE - Coastal High Hazard', risk: 'high', description: 'Coastal area with wave action. Strictest building codes.', insurance: 'Required. Highest premiums.' },
-    AE: { name: 'AE - High Risk', risk: 'high', description: 'High-risk flood area with established Base Flood Elevation.', insurance: 'Required for federally-backed mortgages.' },
-    AO: { name: 'AO - Shallow Flooding', risk: 'moderate', description: 'Areas with 1-3 feet shallow flooding.', insurance: 'Required.' },
-    X: { name: 'X - Moderate/Low Risk', risk: 'low', description: 'Minimal flood hazard area.', insurance: 'Not required but recommended.' },
-  },
-  bfe: {
-    title: 'Base Flood Elevation (BFE)',
-    description: 'The height floodwaters are expected to reach during a major flood. Your elevation relative to BFE is the #1 factor in flood insurance cost.',
-  },
-  cafe: {
-    title: 'CAFE Requirement',
-    description: 'NJ requires new construction to be BFE + 4 feet. This extra height provides safety margin and better insurance rates.',
-  },
-  legacy: {
-    title: 'Legacy Window',
-    description: 'Permits submitted before July 15, 2026 can use previous elevation standards. After that, stricter CAFE rules apply.',
+    AE: { name: 'AE - High Risk', risk: 'high', description: 'High-risk flood area with established BFE.', insurance: 'Required for federally-backed mortgages.' },
+    X: { name: 'X - Moderate/Low Risk', risk: 'low', description: 'Minimal flood hazard.', insurance: 'Not required but recommended.' },
   },
   programs: {
-    blueAcres: { title: 'Blue Acres Buyout', agency: 'NJ DEP', description: 'Voluntary buyout of flood-prone homes at fair market value.', eligibility: 'Flood-prone properties with repetitive damage.', link: 'https://dep.nj.gov/blueacres/' },
-    fma: { title: 'Flood Mitigation Assistance', agency: 'FEMA', description: 'Grants for elevation, floodproofing, or acquisition.', eligibility: 'NFIP-insured properties.', link: 'https://www.fema.gov/grants/mitigation/floods' },
-    hmgp: { title: 'Hazard Mitigation Grant Program', agency: 'FEMA', description: 'Post-disaster mitigation funding.', eligibility: 'Properties in declared disaster areas.', link: 'https://www.fema.gov/grants/mitigation/hazard-mitigation' },
+    blueAcres: { title: 'Blue Acres Buyout', agency: 'NJ DEP', description: 'Voluntary buyout of flood-prone homes.', link: 'https://dep.nj.gov/blueacres/' },
+    fma: { title: 'Flood Mitigation Assistance', agency: 'FEMA', description: 'Grants for elevation and floodproofing.', link: 'https://www.fema.gov/grants/mitigation/floods' },
+    hmgp: { title: 'Hazard Mitigation Grant', agency: 'FEMA', description: 'Post-disaster mitigation funding.', link: 'https://www.fema.gov/grants/mitigation/hazard-mitigation' },
   }
 };
 
-// =============================================================================
-// ASSESSMENT QUESTIONS
-// =============================================================================
-const QUESTIONS = [
-  {
-    id: 'elevationCert',
-    question: 'Do you have an Elevation Certificate?',
-    helpText: 'Official document showing your home\'s elevation vs flood level. Without one, insurers assume worst case.',
-    options: [
-      { value: 'yes', label: 'Yes' },
-      { value: 'no', label: 'No' },
-      { value: 'unsure', label: 'Not Sure' },
-    ],
-    effects: {
-      yes: { type: 'positive', title: 'Great! Your insurer can rate you accurately.', action: null },
-      no: { type: 'negative', title: 'You\'re likely overpaying $500+/year.', action: { text: 'Get an Elevation Certificate', cost: '$300-600', savings: '~$500/yr', payback: 'Year 1' } },
-      unsure: { type: 'warning', title: 'Check with your insurance agent - they may have one on file.', action: { text: 'Contact your insurance agent', cost: 'Free' } },
-    },
-    scoring: { yes: 15, no: 0, unsure: 5 },
-    savingsImpact: { yes: 500, no: 0, unsure: 0 },
-  },
-  {
-    id: 'elevationVsBFE',
-    question: 'How high is your lowest floor compared to the Base Flood Elevation?',
-    helpText: 'This is the #1 factor in your flood insurance premium. Each foot above BFE saves hundreds per year.',
-    options: [
-      { value: 'above4', label: '4+ feet above BFE' },
-      { value: 'above2', label: '2-4 feet above' },
-      { value: 'at', label: 'At or near BFE' },
-      { value: 'below', label: 'Below BFE' },
-      { value: 'unsure', label: 'Not Sure' },
-    ],
-    effects: {
-      above4: { type: 'positive', title: 'Excellent! You meet CAFE requirements and get the best rates.', action: null },
-      above2: { type: 'positive', title: 'Good elevation with favorable insurance rates.', action: null },
-      at: { type: 'warning', title: 'Meets minimum standard. Moderate rates.', action: { text: 'Consider elevation when renovating', note: 'May qualify for elevation grants' } },
-      below: { type: 'negative', title: 'Higher flood risk and insurance costs.', action: { text: 'Explore elevation grants', note: 'FMA grants cover up to 100%' } },
-      unsure: { type: 'warning', title: 'An Elevation Certificate will tell you exactly.', action: { text: 'Get an Elevation Certificate', cost: '$300-600' } },
-    },
-    scoring: { above4: 20, above2: 15, at: 8, below: 0, unsure: 5 },
-    savingsImpact: { above4: 1200, above2: 800, at: 300, below: 0, unsure: 0 },
-  },
-  {
-    id: 'foundation',
-    question: 'What type of foundation does your home have?',
-    helpText: 'Foundation type affects how water interacts with your home during floods.',
-    options: [
-      { value: 'piles', label: 'Piles/Stilts' },
-      { value: 'piers', label: 'Piers' },
-      { value: 'crawl', label: 'Crawl Space' },
-      { value: 'slab', label: 'Slab' },
-      { value: 'basement', label: 'Basement' },
-      { value: 'unsure', label: 'Not Sure' },
-    ],
-    effects: {
-      piles: { type: 'positive', title: 'Ideal for flood zones. Water flows underneath.', action: null },
-      piers: { type: 'positive', title: 'Good flood resistance.', action: null },
-      crawl: { type: 'warning', title: 'Needs proper flood vents.', action: { text: 'Verify flood vents are installed', note: '1 sq in per 1 sq ft of enclosed area' } },
-      slab: { type: 'warning', title: 'Limited flood resistance.', action: { text: 'Consider barriers for major renovations' } },
-      basement: { type: 'negative', title: 'Highest risk. Limited coverage available.', action: { text: 'Relocate mechanicals above flood level' } },
-      unsure: { type: 'warning', title: 'Check how your home meets the ground.', action: null },
-    },
-    scoring: { piles: 15, piers: 12, crawl: 8, slab: 4, basement: 0, unsure: 4 },
-    savingsImpact: { piles: 600, piers: 400, crawl: 200, slab: 0, basement: 0, unsure: 0 },
-  },
-  {
-    id: 'roofType',
-    question: 'What type of roof do you have?',
-    helpText: 'Roof type affects wind insurance premiums significantly.',
-    options: [
-      { value: 'metal', label: 'Metal' },
-      { value: 'tile', label: 'Tile' },
-      { value: 'shingle_new', label: 'Shingle (under 10 yrs)' },
-      { value: 'shingle_old', label: 'Shingle (10+ yrs)' },
-      { value: 'unsure', label: 'Not Sure' },
-    ],
-    effects: {
-      metal: { type: 'positive', title: 'Best wind protection. Maximum insurance credits.', action: null },
-      tile: { type: 'positive', title: 'Good wind resistance and longevity.', action: null },
-      shingle_new: { type: 'positive', title: 'Good protection while newer.', action: null },
-      shingle_old: { type: 'warning', title: 'May be nearing end of life.', action: { text: 'Get roof inspection', note: 'Consider metal when replacing' } },
-      unsure: { type: 'warning', title: 'Check your records or have it inspected.', action: null },
-    },
-    scoring: { metal: 15, tile: 12, shingle_new: 10, shingle_old: 5, unsure: 5 },
-    savingsImpact: { metal: 600, tile: 400, shingle_new: 300, shingle_old: 100, unsure: 0 },
-  },
-  {
-    id: 'improvements',
-    question: 'Planning any renovations in the next 12 months?',
-    helpText: 'Major renovations can trigger the 50% rule, requiring full flood code compliance.',
-    options: [
-      { value: 'major', label: 'Yes, major ($50k+)' },
-      { value: 'moderate', label: 'Yes, moderate ($10-50k)' },
-      { value: 'minor', label: 'Minor/maintenance only' },
-      { value: 'none', label: 'No plans' },
-    ],
-    effects: {
-      major: { type: 'warning', title: '⚠️ Check the 50% rule before starting!', action: { text: 'Consult building department first', note: 'Legacy window ends July 2026', urgent: true } },
-      moderate: { type: 'info', title: 'Track costs carefully toward 50% threshold.', action: { text: 'Keep records of all improvement costs' } },
-      minor: { type: 'positive', title: 'Routine maintenance keeps you protected.', action: null },
-      none: { type: 'positive', title: 'Good time to review your documentation.', action: null },
-    },
-    scoring: { major: 0, moderate: 0, minor: 0, none: 0 },
-    savingsImpact: { major: 0, moderate: 0, minor: 0, none: 0 },
-  },
-];
+// Color mappings
+const COLORS = {
+  purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', icon: 'bg-purple-500/30' },
+  yellow: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30', icon: 'bg-yellow-500/30' },
+  green: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: 'bg-emerald-500/30' },
+  orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', icon: 'bg-orange-500/30' },
+  pink: { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/30', icon: 'bg-pink-500/30' },
+  cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', icon: 'bg-cyan-500/30' },
+  blue: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', icon: 'bg-blue-500/30' },
+};
 
 // =============================================================================
 // HELPER COMPONENTS
@@ -213,10 +261,10 @@ const InfoPopup = ({ title, children, isOpen, onClose }) => {
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-slate-800 rounded-2xl border border-slate-700 max-w-lg w-full max-h-[80vh] overflow-auto"
+        className="bg-slate-800 rounded-2xl border border-slate-700 max-w-md w-full"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800">
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 className="font-bold text-white flex items-center gap-2">
             <Info className="w-5 h-5 text-cyan-400" />
             {title}
@@ -225,24 +273,35 @@ const InfoPopup = ({ title, children, isOpen, onClose }) => {
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
-        <div className="p-4 text-slate-300 space-y-3">{children}</div>
+        <div className="p-4 text-slate-300">{children}</div>
       </motion.div>
     </div>
   );
 };
 
+// Toggle Switch
+const Toggle = ({ enabled, onChange }) => (
+  <button
+    onClick={() => onChange(!enabled)}
+    className={`relative w-14 h-8 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
+  >
+    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${enabled ? 'left-7' : 'left-1'}`} />
+  </button>
+);
+
 // Score Gauge
-const ScoreGauge = ({ score }) => {
-  const getColor = (s) => {
-    if (s >= 70) return { color: '#10b981', label: 'Well Protected' };
-    if (s >= 50) return { color: '#22d3ee', label: 'Moderate' };
-    if (s >= 30) return { color: '#f59e0b', label: 'Needs Attention' };
-    return { color: '#ef4444', label: 'At Risk' };
+const ScoreGauge = ({ score, maxScore = 100 }) => {
+  const percentage = Math.min((score / maxScore) * 100, 100);
+  const getColor = (p) => {
+    if (p >= 70) return '#10b981';
+    if (p >= 50) return '#22d3ee';
+    if (p >= 30) return '#f59e0b';
+    return '#ef4444';
   };
-  const { color, label } = getColor(score);
+  const color = getColor(percentage);
   const radius = 85;
   const circumference = Math.PI * radius;
-  const progress = (score / 100) * circumference;
+  const progress = (percentage / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center">
@@ -256,77 +315,14 @@ const ScoreGauge = ({ score }) => {
           strokeLinecap="round"
           initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          transition={{ duration: 0.5 }}
         />
-        <text x={100} y={95} textAnchor="middle" className="text-4xl font-bold fill-white">{score}</text>
+        <text x={100} y={85} textAnchor="middle" className="text-4xl font-bold fill-white">{Math.round(score)}</text>
+        <text x={100} y={108} textAnchor="middle" className="text-sm fill-slate-400">/ {maxScore}</text>
       </svg>
-      <p className="text-sm font-medium mt-1" style={{ color }}>{label}</p>
-      <p className="text-xs text-slate-500">Resilience Score</p>
     </div>
   );
 };
-
-// Effect Card
-const EffectCard = ({ effect }) => {
-  if (!effect) return null;
-  const colors = {
-    positive: 'border-emerald-500/50 bg-emerald-500/10',
-    negative: 'border-red-500/50 bg-red-500/10',
-    warning: 'border-amber-500/50 bg-amber-500/10',
-    info: 'border-cyan-500/50 bg-cyan-500/10',
-  };
-  const icons = {
-    positive: <CheckCircle className="w-5 h-5 text-emerald-400" />,
-    negative: <AlertTriangle className="w-5 h-5 text-red-400" />,
-    warning: <AlertCircle className="w-5 h-5 text-amber-400" />,
-    info: <Info className="w-5 h-5 text-cyan-400" />,
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 p-4 rounded-xl border ${colors[effect.type]}`}>
-      <div className="flex items-start gap-3">
-        {icons[effect.type]}
-        <div className="flex-1">
-          <p className="font-medium text-white">{effect.title}</p>
-          {effect.action && (
-            <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
-              <p className="text-sm text-white font-medium">→ {effect.action.text}</p>
-              {effect.action.cost && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Cost: {effect.action.cost}
-                  {effect.action.savings && ` • Saves: ${effect.action.savings}`}
-                  {effect.action.payback && ` • ${effect.action.payback}`}
-                </p>
-              )}
-              {effect.action.note && <p className="text-xs text-cyan-400 mt-1">{effect.action.note}</p>}
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Collapsible Section
-const CollapsibleSection = ({ icon: Icon, title, badge, isOpen, onToggle, children }) => (
-  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-    <button onClick={onToggle} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/50 transition-colors">
-      <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 text-cyan-400" />
-        <span className="font-bold text-white">{title}</span>
-        {badge && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">{badge}</span>}
-      </div>
-      <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-    </button>
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-          <div className="p-4 pt-0 border-t border-slate-700">{children}</div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-);
 
 // =============================================================================
 // MAIN APP
@@ -335,19 +331,20 @@ export default function ShoreHomeScore() {
   // Core state
   const [town, setTown] = useState(null);
   const [streetAddress, setStreetAddress] = useState('');
-  const [propertyData, setPropertyData] = useState(null); // From FEMA lookup (optional)
-  const [answers, setAnswers] = useState({});
+  const [propertyData, setPropertyData] = useState(null);
+  
+  // All field values stored as object
+  const [values, setValues] = useState({});
   
   // UI state
   const [showTownSearch, setShowTownSearch] = useState(false);
   const [townSearchQuery, setTownSearchQuery] = useState('');
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [openCategories, setOpenCategories] = useState({});
   const [showInfo, setShowInfo] = useState(null);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState(null);
-  const [openSections, setOpenSections] = useState({ actions: true, programs: true, compliance: false, insurance: false });
 
-  // Derived data - uses FEMA data if available, otherwise town defaults
+  // Derived data
   const floodZone = propertyData?.floodZone || town?.zone || '--';
   const bfe = propertyData?.bfe || town?.bfe || null;
   const cafe = bfe ? bfe + 4 : null;
@@ -356,57 +353,60 @@ export default function ShoreHomeScore() {
   const LEGACY_WINDOW_END = new Date('2026-07-15');
   const legacyDaysLeft = Math.max(0, Math.ceil((LEGACY_WINDOW_END - new Date()) / (1000 * 60 * 60 * 24)));
 
-  // Filtered towns for search
+  // Filtered towns
   const filteredTowns = SHORE_TOWNS.filter(t =>
     t.name.toLowerCase().includes(townSearchQuery.toLowerCase())
   );
 
-  // Score calculation
-  const score = useMemo(() => {
-    let total = 0;
-    QUESTIONS.forEach(q => {
-      const answer = answers[q.id];
-      if (answer && q.scoring[answer]) total += q.scoring[answer];
+  // Calculate points per category
+  const categoryScores = useMemo(() => {
+    const scores = {};
+    CATEGORIES.forEach(cat => {
+      let earned = 0;
+      cat.items.forEach(item => {
+        if (item.type === 'toggle') {
+          if (values[item.id]) earned += item.points;
+        } else if (item.type === 'select') {
+          const selected = values[item.id];
+          const option = item.options?.find(o => o.value === selected);
+          if (option) earned += option.points;
+        }
+      });
+      scores[cat.id] = { earned, max: cat.maxPoints };
     });
-    if (floodZone === 'X') total += 15;
-    else if (floodZone === 'AE') total += 5;
-    return Math.min(Math.round(total), 100);
-  }, [answers, floodZone]);
+    return scores;
+  }, [values]);
 
-  // Savings calculation
-  const savings = useMemo(() => {
-    let total = 0;
-    QUESTIONS.forEach(q => {
-      const answer = answers[q.id];
-      if (answer && q.savingsImpact[answer]) total += q.savingsImpact[answer];
-    });
-    return total;
-  }, [answers]);
+  // Total score
+  const totalScore = useMemo(() => {
+    return Object.values(categoryScores).reduce((sum, cat) => sum + cat.earned, 0);
+  }, [categoryScores]);
 
-  // Action items from answers
-  const actionItems = useMemo(() => {
-    return QUESTIONS
-      .filter(q => answers[q.id] && q.effects[answers[q.id]]?.action)
-      .map(q => ({ id: q.id, ...q.effects[answers[q.id]].action, type: q.effects[answers[q.id]].type }));
-  }, [answers]);
+  const maxScore = useMemo(() => {
+    return CATEGORIES.reduce((sum, cat) => sum + cat.maxPoints, 0);
+  }, []);
 
-  // Address lookup (optional)
+  // Toggle category open/closed
+  const toggleCategory = (catId) => {
+    setOpenCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
+  };
+
+  // Update a value
+  const setValue = (id, val) => {
+    setValues(prev => ({ ...prev, [id]: val }));
+  };
+
+  // Address lookup
   const lookupAddress = async () => {
     if (!town || !streetAddress.trim()) return;
     setAddressLoading(true);
     setAddressError(null);
-    
     try {
       const fullAddress = `${streetAddress}, ${town.name}, NJ ${town.zip}`;
       const res = await fetch(`/api/fema-lookup?address=${encodeURIComponent(fullAddress)}`);
       const data = await res.json();
-      
       if (data.success && data.floodZone) {
-        setPropertyData({
-          address: data.matchedAddress || fullAddress,
-          floodZone: data.floodZone,
-          bfe: data.bfe > 0 ? data.bfe : null,
-        });
+        setPropertyData({ address: data.matchedAddress || fullAddress, floodZone: data.floodZone, bfe: data.bfe > 0 ? data.bfe : null });
       } else {
         setAddressError('Could not find exact data. Using town defaults.');
       }
@@ -421,7 +421,7 @@ export default function ShoreHomeScore() {
     setTown(t);
     setShowTownSearch(false);
     setTownSearchQuery('');
-    setPropertyData(null); // Clear FEMA data, will use town defaults
+    setPropertyData(null);
   };
 
   // ===========================================
@@ -444,23 +444,17 @@ export default function ShoreHomeScore() {
             </div>
             {town && (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 px-3 py-1 bg-slate-700 rounded-full">
-                  <span className="text-sm font-bold text-white">{score}</span>
-                  <span className="text-xs text-slate-400">/ 100</span>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-emerald-400">{totalScore}</p>
+                  <p className="text-xs text-slate-400">/ {maxScore} points</p>
                 </div>
-                {savings > 0 && (
-                  <div className="hidden sm:flex items-center gap-1 px-3 py-1 bg-emerald-500/20 rounded-full">
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-bold text-emerald-400">${savings.toLocaleString()}/yr</span>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         
         {/* Town Selection */}
         <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
@@ -468,7 +462,7 @@ export default function ShoreHomeScore() {
           <div className="relative">
             <button
               onClick={() => setShowTownSearch(!showTownSearch)}
-              className="w-full p-3 bg-slate-900 border border-slate-600 rounded-xl text-left flex items-center justify-between hover:border-slate-500 transition-colors"
+              className="w-full p-3 bg-slate-900 border border-slate-600 rounded-xl text-left flex items-center justify-between hover:border-slate-500"
             >
               <span className={town ? 'text-white' : 'text-slate-500'}>
                 {town ? `${town.name}, NJ ${town.zip}` : 'Choose a town...'}
@@ -509,16 +503,11 @@ export default function ShoreHomeScore() {
                           <p className="text-xs text-slate-400">{t.county} County • {t.zip}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-xs font-medium ${t.zone.startsWith('V') ? 'text-red-400' : t.zone === 'AE' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            Zone {t.zone}
-                          </p>
+                          <p className={`text-xs font-medium ${t.zone.startsWith('V') ? 'text-red-400' : 'text-amber-400'}`}>Zone {t.zone}</p>
                           <p className="text-xs text-slate-500">BFE {t.bfe} ft</p>
                         </div>
                       </button>
                     ))}
-                    {filteredTowns.length === 0 && (
-                      <p className="px-4 py-3 text-slate-400 text-sm">No towns found</p>
-                    )}
                   </div>
                 </motion.div>
               )}
@@ -526,68 +515,38 @@ export default function ShoreHomeScore() {
           </div>
         </div>
 
-        {/* Property Stats - Only show if town selected */}
+        {/* Property Stats */}
         {town && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3"
-          >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-slate-400 uppercase">Flood Zone</p>
+                <p className="text-xs text-slate-400">Flood Zone</p>
                 <button onClick={() => setShowInfo('floodZone')} className="p-1 hover:bg-slate-700 rounded">
                   <HelpCircle className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
-              <p className={`text-2xl font-bold ${floodZone.startsWith('V') ? 'text-red-400' : floodZone === 'AE' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {floodZone}
-              </p>
-              {propertyData && <p className="text-xs text-cyan-400 mt-1">Exact</p>}
-              {!propertyData && town && <p className="text-xs text-slate-500 mt-1">Town typical</p>}
+              <p className={`text-2xl font-bold ${floodZone.startsWith('V') ? 'text-red-400' : 'text-amber-400'}`}>{floodZone}</p>
             </div>
-            
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-slate-400 uppercase">BFE</p>
-                <button onClick={() => setShowInfo('bfe')} className="p-1 hover:bg-slate-700 rounded">
-                  <HelpCircle className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
+              <p className="text-xs text-slate-400 mb-1">BFE</p>
               <p className="text-2xl font-bold text-white">{bfe || '--'} <span className="text-sm font-normal text-slate-400">ft</span></p>
             </div>
-            
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-slate-400 uppercase">CAFE Req</p>
-                <button onClick={() => setShowInfo('cafe')} className="p-1 hover:bg-slate-700 rounded">
-                  <HelpCircle className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
+              <p className="text-xs text-slate-400 mb-1">CAFE Req</p>
               <p className="text-2xl font-bold text-white">{cafe || '--'} <span className="text-sm font-normal text-slate-400">ft</span></p>
             </div>
-            
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-slate-400 uppercase">Legacy</p>
-                <button onClick={() => setShowInfo('legacy')} className="p-1 hover:bg-slate-700 rounded">
-                  <HelpCircle className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
+              <p className="text-xs text-slate-400 mb-1">Legacy Window</p>
               <p className="text-2xl font-bold text-amber-400">{legacyDaysLeft} <span className="text-sm font-normal text-slate-400">days</span></p>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Optional Address Lookup */}
         {town && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-slate-800/50 rounded-xl border border-slate-700 p-4"
-          >
+          <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-4">
             <p className="text-sm text-slate-300 mb-2">
-              Want exact data for your property? <span className="text-slate-500">(optional)</span>
+              Want exact flood data? <span className="text-slate-500">(optional)</span>
             </p>
             <div className="flex gap-2">
               <input
@@ -598,216 +557,170 @@ export default function ShoreHomeScore() {
                 placeholder="Street address (e.g., 123 Ocean Ave)"
                 className="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
               />
-              <button
-                onClick={lookupAddress}
-                disabled={addressLoading || !streetAddress.trim()}
-                className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:bg-slate-700 text-cyan-400 disabled:text-slate-500 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                {addressLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                Look Up
+              <button onClick={lookupAddress} disabled={addressLoading} className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-sm font-medium">
+                {addressLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Look Up'}
               </button>
             </div>
             {addressError && <p className="text-amber-400 text-xs mt-2">{addressError}</p>}
             {propertyData && <p className="text-emerald-400 text-xs mt-2">✓ Using exact data for {propertyData.address}</p>}
-          </motion.div>
+          </div>
         )}
 
-        {/* Score + Assessment */}
+        {/* Score Overview */}
         {town && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 flex flex-col items-center justify-center">
-              <ScoreGauge score={score} />
-              {savings > 0 && (
-                <p className="text-emerald-400 font-medium mt-3">${savings.toLocaleString()}/yr savings</p>
-              )}
-            </div>
-            
-            <div className="md:col-span-2 bg-slate-800 rounded-xl border border-slate-700 p-6">
-              <h2 className="font-bold text-white mb-4">Quick Assessment</h2>
-              
-              {/* Current Question */}
-              {currentQuestion < QUESTIONS.length ? (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-slate-400">Question {currentQuestion + 1} of {QUESTIONS.length}</p>
-                    <button onClick={() => setShowInfo(`q-${currentQuestion}`)} className="p-1 hover:bg-slate-700 rounded">
-                      <HelpCircle className="w-4 h-4 text-slate-500" />
-                    </button>
-                  </div>
-                  <p className="text-white font-medium mb-3">{QUESTIONS[currentQuestion].question}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {QUESTIONS[currentQuestion].options.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => {
-                          setAnswers(prev => ({ ...prev, [QUESTIONS[currentQuestion].id]: opt.value }));
-                          if (currentQuestion < QUESTIONS.length - 1) {
-                            setTimeout(() => setCurrentQuestion(prev => prev + 1), 300);
-                          }
-                        }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          answers[QUESTIONS[currentQuestion].id] === opt.value
-                            ? 'bg-cyan-500 text-white'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Effect feedback */}
-                  {answers[QUESTIONS[currentQuestion].id] && (
-                    <EffectCard effect={QUESTIONS[currentQuestion].effects[answers[QUESTIONS[currentQuestion].id]]} />
-                  )}
-                  
-                  {/* Navigation */}
-                  <div className="flex justify-between mt-4 pt-4 border-t border-slate-700">
-                    <button
-                      onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
-                      disabled={currentQuestion === 0}
-                      className="text-sm text-slate-400 hover:text-white disabled:opacity-50"
-                    >
-                      ← Back
-                    </button>
-                    {answers[QUESTIONS[currentQuestion].id] && currentQuestion < QUESTIONS.length - 1 && (
-                      <button
-                        onClick={() => setCurrentQuestion(prev => prev + 1)}
-                        className="text-sm text-cyan-400 hover:text-cyan-300"
-                      >
-                        Next →
-                      </button>
-                    )}
-                    {currentQuestion === QUESTIONS.length - 1 && answers[QUESTIONS[currentQuestion].id] && (
-                      <button
-                        onClick={() => setCurrentQuestion(QUESTIONS.length)}
-                        className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg text-sm font-medium"
-                      >
-                        See Full Results
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
-                  <p className="text-white font-medium">Assessment Complete!</p>
-                  <p className="text-slate-400 text-sm mt-1">See your full results below</p>
-                  <button
-                    onClick={() => setCurrentQuestion(0)}
-                    className="text-cyan-400 text-sm mt-3 hover:underline"
-                  >
-                    Retake Assessment
-                  </button>
-                </div>
-              )}
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+            <div className="flex items-center justify-between">
+              <ScoreGauge score={totalScore} maxScore={maxScore} />
+              <div className="text-right">
+                <p className="text-slate-400 text-sm mb-1">Resilience Score</p>
+                <p className="text-3xl font-bold text-white">{Math.round((totalScore / maxScore) * 100)}%</p>
+                <p className="text-slate-500 text-sm">{totalScore} of {maxScore} points</p>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Results Sections - Show when assessment complete */}
-        {town && currentQuestion >= QUESTIONS.length && (
-          <>
-            {/* Action Items */}
-            {actionItems.length > 0 && (
-              <CollapsibleSection
-                icon={Target}
-                title="Recommended Actions"
-                badge={`${actionItems.length} items`}
-                isOpen={openSections.actions}
-                onToggle={() => setOpenSections(prev => ({ ...prev, actions: !prev.actions }))}
+        {/* Categories */}
+        {town && CATEGORIES.map(cat => {
+          const colors = COLORS[cat.color];
+          const catScore = categoryScores[cat.id];
+          const isOpen = openCategories[cat.id];
+          const progressPercent = (catScore.earned / catScore.max) * 100;
+          const Icon = cat.icon;
+
+          return (
+            <div key={cat.id} className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+              {/* Category Header */}
+              <button
+                onClick={() => toggleCategory(cat.id)}
+                className="w-full p-4 flex items-center gap-4 hover:bg-slate-700/50 transition-colors"
               >
-                <div className="space-y-3 mt-3">
-                  {actionItems.map((item) => (
-                    <div key={item.id} className={`p-4 rounded-xl border ${
-                      item.type === 'negative' ? 'border-red-500/30 bg-red-500/5' :
-                      item.type === 'warning' ? 'border-amber-500/30 bg-amber-500/5' :
-                      'border-slate-600 bg-slate-700/30'
-                    }`}>
-                      <p className="font-medium text-white">{item.text}</p>
-                      {item.cost && (
-                        <p className="text-sm text-slate-400 mt-1">
-                          Cost: {item.cost}
-                          {item.savings && <span className="text-emerald-400"> → Saves: {item.savings}</span>}
-                        </p>
-                      )}
-                      {item.note && <p className="text-sm text-cyan-400 mt-1">💡 {item.note}</p>}
+                <div className={`p-3 rounded-xl ${colors.icon}`}>
+                  <Icon className={`w-6 h-6 ${colors.text}`} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-bold text-white">{cat.name}</p>
+                  <p className="text-sm text-slate-400">{cat.subtitle}</p>
+                </div>
+                <div className="text-right mr-4">
+                  <p className={`text-xl font-bold ${colors.text}`}>{catScore.earned}/{catScore.max}</p>
+                  <p className="text-xs text-slate-400">points</p>
+                </div>
+                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Progress Bar */}
+              <div className="px-4 pb-2">
+                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <motion.div
+                    className={`h-full ${colors.bg.replace('/20', '')}`}
+                    style={{ backgroundColor: colors.text.replace('text-', '').includes('400') ? undefined : undefined }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+
+              {/* Items */}
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
+                    exit={{ height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 space-y-2">
+                      {cat.items.map(item => {
+                        if (item.type === 'toggle') {
+                          const isEnabled = !!values[item.id];
+                          return (
+                            <div key={item.id} className="bg-slate-700/50 rounded-xl p-4 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-white font-medium">{item.label}</span>
+                                <button onClick={() => setShowInfo(item.id)} className="p-1 hover:bg-slate-600 rounded">
+                                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                                </button>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${isEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-600 text-slate-300'}`}>
+                                  +{item.points}
+                                </span>
+                              </div>
+                              <Toggle enabled={isEnabled} onChange={(val) => setValue(item.id, val)} />
+                            </div>
+                          );
+                        }
+
+                        if (item.type === 'select') {
+                          const selectedValue = values[item.id];
+                          return (
+                            <div key={item.id} className="space-y-2">
+                              <div className="flex items-center gap-2 px-1">
+                                <span className="text-slate-300 font-medium">{item.label}</span>
+                                <button onClick={() => setShowInfo(item.id)} className="p-1 hover:bg-slate-600 rounded">
+                                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                                </button>
+                              </div>
+                              {item.options.map(opt => {
+                                const isSelected = selectedValue === opt.value;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => setValue(item.id, opt.value)}
+                                    className={`w-full p-4 rounded-xl text-left flex items-center justify-between transition-colors ${
+                                      isSelected ? `${colors.border} border-2 ${colors.bg}` : 'bg-slate-700/50 border-2 border-transparent hover:border-slate-600'
+                                    }`}
+                                  >
+                                    <div>
+                                      <p className="text-white font-medium">{opt.label}</p>
+                                      {opt.sublabel && <p className="text-sm text-slate-400">{opt.sublabel}</p>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`px-2 py-1 rounded text-sm font-medium ${isSelected ? `${colors.bg} ${colors.text}` : 'bg-slate-600 text-slate-300'}`}>
+                                        +{opt.points}
+                                      </span>
+                                      {isSelected && <Check className={`w-5 h-5 ${colors.text}`} />}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
 
-            {/* Programs */}
-            <CollapsibleSection
-              icon={DollarSign}
-              title="Programs & Grants"
-              badge="3 programs"
-              isOpen={openSections.programs}
-              onToggle={() => setOpenSections(prev => ({ ...prev, programs: !prev.programs }))}
-            >
-              <div className="space-y-3 mt-3">
-                {Object.entries(EDUCATION.programs).map(([key, prog]) => (
-                  <div key={key} className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-white">{prog.title}</p>
-                        <p className="text-xs text-cyan-400">{prog.agency}</p>
-                        <p className="text-sm text-slate-400 mt-2">{prog.description}</p>
-                        {prog.eligibility && <p className="text-sm text-slate-300 mt-1">Eligibility: {prog.eligibility}</p>}
-                      </div>
-                      <a href={prog.link} target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-sm whitespace-nowrap flex items-center gap-1">
-                        Learn More <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
+        {/* Programs & Grants */}
+        {town && (
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              Programs & Grants
+            </h3>
+            <div className="space-y-2">
+              {Object.entries(EDUCATION.programs).map(([key, prog]) => (
+                <div key={key} className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">{prog.title}</p>
+                    <p className="text-sm text-slate-400">{prog.description}</p>
                   </div>
-                ))}
-              </div>
-            </CollapsibleSection>
-
-            {/* Compliance */}
-            <CollapsibleSection
-              icon={FileText}
-              title="Compliance & Deadlines"
-              isOpen={openSections.compliance}
-              onToggle={() => setOpenSections(prev => ({ ...prev, compliance: !prev.compliance }))}
-            >
-              <div className="space-y-3 mt-3">
-                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
-                  <p className="font-medium text-white mb-2">⏰ Legacy Window</p>
-                  <p className="text-sm text-slate-300">Permits before <span className="text-amber-400 font-medium">July 15, 2026</span> can use previous standards.</p>
-                  <p className="text-2xl font-bold text-amber-400 mt-2">{legacyDaysLeft} days left</p>
+                  <a href={prog.link} target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1">
+                    Learn More <ExternalLink className="w-4 h-4" />
+                  </a>
                 </div>
-                <div className="p-4 rounded-xl border border-slate-600 bg-slate-700/30">
-                  <p className="font-medium text-white mb-2">⚠️ 50% Rule</p>
-                  <p className="text-sm text-slate-300">If improvements exceed 50% of home value in 10 years, full flood code compliance is required.</p>
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            {/* Insurance Tips */}
-            <CollapsibleSection
-              icon={Shield}
-              title="Insurance Tips"
-              isOpen={openSections.insurance}
-              onToggle={() => setOpenSections(prev => ({ ...prev, insurance: !prev.insurance }))}
-            >
-              <div className="space-y-3 mt-3">
-                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-                  <p className="font-medium text-white mb-3">Ways to Lower Your Premium</p>
-                  <div className="space-y-2 text-sm">
-                    <p className="text-slate-300"><CheckCircle className="w-4 h-4 text-emerald-400 inline mr-2" />Get an Elevation Certificate</p>
-                    <p className="text-slate-300"><CheckCircle className="w-4 h-4 text-emerald-400 inline mr-2" />Elevate above BFE</p>
-                    <p className="text-slate-300"><CheckCircle className="w-4 h-4 text-emerald-400 inline mr-2" />Install flood vents</p>
-                    <p className="text-slate-300"><CheckCircle className="w-4 h-4 text-emerald-400 inline mr-2" />Shop private insurers</p>
-                  </div>
-                </div>
-              </div>
-            </CollapsibleSection>
-          </>
+              ))}
+            </div>
+          </div>
         )}
 
-        {/* No town selected state */}
+        {/* No town selected */}
         {!town && (
           <div className="text-center py-12">
             <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-4" />
@@ -832,23 +745,11 @@ export default function ShoreHomeScore() {
           </>
         )}
       </InfoPopup>
-      
-      <InfoPopup title="Base Flood Elevation" isOpen={showInfo === 'bfe'} onClose={() => setShowInfo(null)}>
-        <p>{EDUCATION.bfe.description}</p>
-      </InfoPopup>
-      
-      <InfoPopup title="CAFE Requirement" isOpen={showInfo === 'cafe'} onClose={() => setShowInfo(null)}>
-        <p>{EDUCATION.cafe.description}</p>
-      </InfoPopup>
-      
-      <InfoPopup title="Legacy Window" isOpen={showInfo === 'legacy'} onClose={() => setShowInfo(null)}>
-        <p>{EDUCATION.legacy.description}</p>
-        <p className="text-2xl font-bold text-amber-400 mt-3">{legacyDaysLeft} days remaining</p>
-      </InfoPopup>
-      
-      {QUESTIONS.map((q, i) => (
-        <InfoPopup key={q.id} title={q.question} isOpen={showInfo === `q-${i}`} onClose={() => setShowInfo(null)}>
-          <p>{q.helpText}</p>
+
+      {/* Item-specific info popups */}
+      {CATEGORIES.flatMap(cat => cat.items).map(item => (
+        <InfoPopup key={item.id} title={item.label} isOpen={showInfo === item.id} onClose={() => setShowInfo(null)}>
+          <p>{item.helpText}</p>
         </InfoPopup>
       ))}
     </div>
