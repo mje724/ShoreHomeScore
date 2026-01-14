@@ -715,6 +715,12 @@ export default function ShoreHomeScore() {
   const [showInfo, setShowInfo] = useState(null);
   const [townSearch, setTownSearch] = useState('');
   const [showTownDropdown, setShowTownDropdown] = useState(false);
+  const [openSections, setOpenSections] = useState({
+    actions: true,
+    programs: true,
+    compliance: false,
+    insurance: false,
+  });
   
   // Legacy window calculation
   const LEGACY_WINDOW_END = new Date('2026-07-15');
@@ -1336,14 +1342,6 @@ export default function ShoreHomeScore() {
   // DASHBOARD PAGE
   // ===========================================
   if (step === 'dashboard') {
-    // Collapsible section state
-    const [openSections, setOpenSections] = useState({
-      actions: true,
-      programs: true,
-      compliance: false,
-      insurance: false,
-    });
-    
     const toggleSection = (key) => {
       setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
     };
