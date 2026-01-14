@@ -528,15 +528,30 @@ export default function ShoreHomeScore() {
               <p className={`text-2xl font-bold ${floodZone.startsWith('V') ? 'text-red-400' : 'text-amber-400'}`}>{floodZone}</p>
             </div>
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <p className="text-xs text-slate-400 mb-1">BFE</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-400">BFE</p>
+                <button onClick={() => setShowInfo('bfe')} className="p-1 hover:bg-slate-700 rounded">
+                  <HelpCircle className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
               <p className="text-2xl font-bold text-white">{bfe || '--'} <span className="text-sm font-normal text-slate-400">ft</span></p>
             </div>
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <p className="text-xs text-slate-400 mb-1">CAFE Req</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-400">CAFE Req</p>
+                <button onClick={() => setShowInfo('cafe')} className="p-1 hover:bg-slate-700 rounded">
+                  <HelpCircle className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
               <p className="text-2xl font-bold text-white">{cafe || '--'} <span className="text-sm font-normal text-slate-400">ft</span></p>
             </div>
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-              <p className="text-xs text-slate-400 mb-1">Legacy Window</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-400">Legacy Window</p>
+                <button onClick={() => setShowInfo('legacy')} className="p-1 hover:bg-slate-700 rounded">
+                  <HelpCircle className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
               <p className="text-2xl font-bold text-amber-400">{legacyDaysLeft} <span className="text-sm font-normal text-slate-400">days</span></p>
             </div>
           </div>
@@ -697,26 +712,343 @@ export default function ShoreHomeScore() {
           );
         })}
 
+        {/* Compliance & Deadlines */}
+        {town && (
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => setOpenCategories(prev => ({ ...prev, compliance: !prev.compliance }))}
+              className="w-full p-4 flex items-center gap-4 hover:bg-slate-700/50 transition-colors"
+            >
+              <div className="p-3 rounded-xl bg-amber-500/30">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-bold text-white">Compliance & Deadlines</p>
+                <p className="text-sm text-slate-400">Critical rules and timelines</p>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${openCategories.compliance ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <AnimatePresence>
+              {openCategories.compliance && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                  <div className="px-4 pb-4 space-y-3">
+                    {/* Legacy Window */}
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-white">Legacy Window Deadline</p>
+                            <button onClick={() => setShowInfo('legacy')} className="p-1 hover:bg-slate-700 rounded">
+                              <HelpCircle className="w-4 h-4 text-slate-400" />
+                            </button>
+                          </div>
+                          <p className="text-sm text-slate-300">Permits submitted before <span className="text-amber-400 font-semibold">July 15, 2026</span> can use previous elevation standards.</p>
+                          <p className="text-xs text-slate-400 mt-2">After this date, all new construction and substantial improvements must meet CAFE requirements (BFE + 4 ft).</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-3xl font-bold text-amber-400">{legacyDaysLeft}</p>
+                          <p className="text-xs text-slate-400">days left</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 50% Rule */}
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-white">50% Rule (Substantial Improvement)</p>
+                        <button onClick={() => setShowInfo('fiftyPercent')} className="p-1 hover:bg-slate-700 rounded">
+                          <HelpCircle className="w-4 h-4 text-slate-400" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-300">If improvements exceed <span className="text-red-400 font-semibold">50% of your home's market value</span> in any 10-year period, the entire structure must be brought up to current flood codes.</p>
+                      <div className="mt-3 p-3 bg-slate-800/50 rounded-lg">
+                        <p className="text-xs text-cyan-400">💡 Track improvement costs carefully. Get a pre-improvement appraisal before major renovations to establish baseline value.</p>
+                      </div>
+                    </div>
+                    
+                    {/* CAFE Requirements */}
+                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-white">CAFE Requirements</p>
+                        <button onClick={() => setShowInfo('cafe')} className="p-1 hover:bg-slate-700 rounded">
+                          <HelpCircle className="w-4 h-4 text-slate-400" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-300">Coastal A Flood Elevation requires building to <span className="text-cyan-400 font-semibold">BFE + 4 feet</span> in NJ.</p>
+                      <p className="text-sm text-slate-300 mt-2">Your CAFE requirement: <span className="text-white font-bold">{cafe || '--'} ft</span></p>
+                    </div>
+                    
+                    {/* VE Zone Requirements - only show if VE zone */}
+                    {floodZone.startsWith('V') && (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="font-medium text-white">VE Zone Requirements</p>
+                          <button onClick={() => setShowInfo('veZone')} className="p-1 hover:bg-slate-700 rounded">
+                            <HelpCircle className="w-4 h-4 text-slate-400" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-300 mb-2">Your property is in a Coastal High Hazard zone with additional requirements:</p>
+                        <ul className="text-sm text-slate-300 space-y-1">
+                          <li className="flex items-start gap-2"><span className="text-red-400">•</span> Breakaway walls required below BFE</li>
+                          <li className="flex items-start gap-2"><span className="text-red-400">•</span> Open foundation (piles/piers) required for new construction</li>
+                          <li className="flex items-start gap-2"><span className="text-red-400">•</span> No fill allowed for structural support</li>
+                          <li className="flex items-start gap-2"><span className="text-red-400">•</span> All mechanical equipment must be elevated</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Permitting & Regulations */}
+        {town && (
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => setOpenCategories(prev => ({ ...prev, permits: !prev.permits }))}
+              className="w-full p-4 flex items-center gap-4 hover:bg-slate-700/50 transition-colors"
+            >
+              <div className="p-3 rounded-xl bg-purple-500/30">
+                <FileText className="w-6 h-6 text-purple-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-bold text-white">Permitting & Regulations</p>
+                <p className="text-sm text-slate-400">What requires permits & common violations</p>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${openCategories.permits ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <AnimatePresence>
+              {openCategories.permits && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                  <div className="px-4 pb-4 space-y-3">
+                    {/* What Needs Permits */}
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                      <p className="font-medium text-white mb-3">Work That Requires Permits</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Roofing replacement</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Deck construction/repair</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Window/door replacement</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Electrical panel upgrades</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> HVAC installation</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Plumbing modifications</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Flood vent installation</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Foundation work</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Additions/extensions</div>
+                        <div className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-purple-400" /> Elevation projects</div>
+                      </div>
+                    </div>
+                    
+                    {/* Common Violations */}
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                      <p className="font-medium text-white mb-3">Common Violations & Penalties</p>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Unpermitted Work</p>
+                            <p className="text-slate-400">Fines up to $1,000/day. Must be corrected or removed. Can block home sales.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Open Permits</p>
+                            <p className="text-slate-400">Work started but never inspected. Shows on title search. Must close before selling.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Enclosing Below BFE</p>
+                            <p className="text-slate-400">Converting flood-resistant areas to living space. Violates flood code and insurance policy.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Non-Compliant Flood Vents</p>
+                            <p className="text-slate-400">Wrong size, wrong placement, or blocked vents. Must be 1 sq in per 1 sq ft of enclosed area.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* NJ Coastal Specific */}
+                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <p className="font-medium text-white">NJ Coastal Permits</p>
+                        <button onClick={() => setShowInfo('cafra')} className="p-1 hover:bg-slate-700 rounded">
+                          <HelpCircle className="w-4 h-4 text-slate-400" />
+                        </button>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-start gap-3">
+                          <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">CAFRA Permit</p>
+                            <p className="text-slate-400">Coastal Area Facility Review Act - required for most development in coastal zones. Apply through NJ DEP.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Waterfront Development</p>
+                            <p className="text-slate-400">Work within 500 ft of tidal waters requires additional state permits.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-white font-medium">Dune Protection</p>
+                            <p className="text-slate-400">Work on or near dunes requires special permits. Heavy fines for dune disturbance.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Pro Tip */}
+                    <div className="bg-slate-700/50 rounded-xl p-4">
+                      <p className="text-sm text-cyan-400">💡 <span className="font-medium">Pro Tip:</span> Before any project, visit your town's building department with your plans. A 15-minute conversation can save thousands in fines and delays.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         {/* Programs & Grants */}
         {town && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-emerald-400" />
-              Programs & Grants
-            </h3>
-            <div className="space-y-2">
-              {Object.entries(EDUCATION.programs).map(([key, prog]) => (
-                <div key={key} className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-white">{prog.title}</p>
-                    <p className="text-sm text-slate-400">{prog.description}</p>
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <button
+              onClick={() => setOpenCategories(prev => ({ ...prev, programs: !prev.programs }))}
+              className="w-full p-4 flex items-center gap-4 hover:bg-slate-700/50 transition-colors"
+            >
+              <div className="p-3 rounded-xl bg-emerald-500/30">
+                <DollarSign className="w-6 h-6 text-emerald-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-bold text-white">Programs & Grants</p>
+                <p className="text-sm text-slate-400">Financial assistance for flood mitigation</p>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${openCategories.programs ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <AnimatePresence>
+              {openCategories.programs && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                  <div className="px-4 pb-4 space-y-3">
+                    {/* Blue Acres */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-white">Blue Acres Buyout Program</p>
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">NJ DEP</span>
+                          </div>
+                          <p className="text-sm text-slate-300 mt-2">Voluntary program that purchases flood-prone homes at pre-storm fair market value. Property is converted to open space.</p>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <p className="text-slate-400"><span className="text-slate-300">Eligibility:</span> Properties in floodways, repetitive loss properties, or homes substantially damaged by storms.</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Funding:</span> 100% of fair market value (pre-storm for damaged properties)</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Timeline:</span> 12-24 months from application to closing</p>
+                          </div>
+                        </div>
+                        <a href="https://dep.nj.gov/blueacres/" target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap ml-4">
+                          Apply <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+                    
+                    {/* FMA */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-white">Flood Mitigation Assistance (FMA)</p>
+                            <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">FEMA</span>
+                          </div>
+                          <p className="text-sm text-slate-300 mt-2">Grants to reduce or eliminate long-term risk of flood damage. Can fund elevation, floodproofing, or buyout.</p>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <p className="text-slate-400"><span className="text-slate-300">Eligibility:</span> NFIP-insured properties. Priority for Severe Repetitive Loss (SRL) properties.</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Funding:</span> Up to 100% for SRL properties. 75% federal / 25% local for others.</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Uses:</span> Elevation, acquisition, dry floodproofing, mitigation reconstruction</p>
+                          </div>
+                        </div>
+                        <a href="https://www.fema.gov/grants/mitigation/floods" target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap ml-4">
+                          Learn More <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+                    
+                    {/* HMGP */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-white">Hazard Mitigation Grant Program (HMGP)</p>
+                            <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">FEMA</span>
+                          </div>
+                          <p className="text-sm text-slate-300 mt-2">Post-disaster funding to rebuild stronger. Available after Presidential disaster declarations.</p>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <p className="text-slate-400"><span className="text-slate-300">Eligibility:</span> Properties in declared disaster areas. Must apply through your local/county OEM.</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Funding:</span> 75% federal / 25% local match</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Uses:</span> Elevation, acquisition, wind retrofit, safe rooms</p>
+                          </div>
+                        </div>
+                        <a href="https://www.fema.gov/grants/mitigation/hazard-mitigation" target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap ml-4">
+                          Learn More <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+                    
+                    {/* Swift Current */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-white">Swift Current Program</p>
+                            <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">FEMA</span>
+                            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">New</span>
+                          </div>
+                          <p className="text-sm text-slate-300 mt-2">Expedited version of FMA for faster delivery. Streamlined application and approval process.</p>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <p className="text-slate-400"><span className="text-slate-300">Eligibility:</span> NFIP-insured properties with flood claims</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Funding:</span> Similar to FMA but faster disbursement</p>
+                            <p className="text-slate-400"><span className="text-slate-300">Timeline:</span> Expedited 6-12 month process</p>
+                          </div>
+                        </div>
+                        <a href="https://www.fema.gov/grants/mitigation/floods/swift-current" target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap ml-4">
+                          Learn More <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+                    
+                    {/* NJ Programs */}
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                      <p className="font-medium text-white mb-3">Additional NJ Resources</p>
+                      <div className="space-y-2 text-sm">
+                        <a href="https://www.state.nj.us/dca/divisions/codes/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg hover:bg-slate-700/50">
+                          <span className="text-slate-300">NJ DCA Building Codes</span>
+                          <ExternalLink className="w-4 h-4 text-slate-400" />
+                        </a>
+                        <a href="https://dep.nj.gov/floods/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg hover:bg-slate-700/50">
+                          <span className="text-slate-300">NJ DEP Flood Info</span>
+                          <ExternalLink className="w-4 h-4 text-slate-400" />
+                        </a>
+                        <a href="https://www.nj.gov/dep/landuse/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg hover:bg-slate-700/50">
+                          <span className="text-slate-300">NJ Land Use Permits</span>
+                          <ExternalLink className="w-4 h-4 text-slate-400" />
+                        </a>
+                      </div>
+                    </div>
                   </div>
-                  <a href={prog.link} target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-1">
-                    Learn More <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-              ))}
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -744,6 +1076,81 @@ export default function ShoreHomeScore() {
             <p className="mt-2 text-cyan-400">{EDUCATION.floodZone[floodZone].insurance}</p>
           </>
         )}
+      </InfoPopup>
+      
+      <InfoPopup title="Base Flood Elevation (BFE)" isOpen={showInfo === 'bfe'} onClose={() => setShowInfo(null)}>
+        <p>The <span className="text-white font-medium">Base Flood Elevation</span> is the height floodwaters are expected to reach during a "base flood" (1% annual chance flood, also called a 100-year flood).</p>
+        <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+          <p className="text-sm text-cyan-400">💡 Your elevation relative to BFE is the #1 factor in your flood insurance premium. Each foot above BFE can save hundreds per year.</p>
+        </div>
+        <p className="mt-3 text-sm text-slate-400">BFE is shown on FEMA flood maps and your Elevation Certificate.</p>
+      </InfoPopup>
+      
+      <InfoPopup title="CAFE Requirement" isOpen={showInfo === 'cafe'} onClose={() => setShowInfo(null)}>
+        <p><span className="text-white font-medium">Coastal A Flood Elevation (CAFE)</span> is New Jersey's requirement that new construction and substantial improvements be built to <span className="text-cyan-400 font-medium">BFE + 4 feet</span>.</p>
+        <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+          <p className="text-sm">Your property:</p>
+          <p className="text-lg font-bold text-white mt-1">BFE {bfe || '--'} ft + 4 ft = {cafe || '--'} ft required</p>
+        </div>
+        <p className="mt-3 text-sm text-slate-400">This "freeboard" provides extra safety margin and qualifies for better insurance rates.</p>
+      </InfoPopup>
+      
+      <InfoPopup title="Legacy Window" isOpen={showInfo === 'legacy'} onClose={() => setShowInfo(null)}>
+        <p>The <span className="text-white font-medium">Legacy Window</span> allows permits submitted before <span className="text-amber-400 font-medium">July 15, 2026</span> to use previous elevation standards.</p>
+        <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <p className="text-2xl font-bold text-amber-400">{legacyDaysLeft} days remaining</p>
+        </div>
+        <p className="mt-3 text-sm text-slate-300">After this date, all new construction and substantial improvements must meet stricter CAFE requirements (BFE + 4 ft).</p>
+        <p className="mt-2 text-sm text-cyan-400">💡 If you're planning major renovations, consider applying for permits before the deadline.</p>
+      </InfoPopup>
+      
+      <InfoPopup title="50% Rule (Substantial Improvement)" isOpen={showInfo === 'fiftyPercent'} onClose={() => setShowInfo(null)}>
+        <p>The <span className="text-white font-medium">50% Rule</span> states that if improvements to your home exceed 50% of its market value within any 10-year period, the <span className="text-red-400 font-medium">entire structure</span> must be brought up to current flood codes.</p>
+        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <p className="text-sm font-medium text-white">This can trigger requirements to:</p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-300">
+            <li>• Elevate the entire structure</li>
+            <li>• Replace foundation</li>
+            <li>• Install flood vents</li>
+            <li>• Relocate mechanical equipment</li>
+          </ul>
+        </div>
+        <p className="mt-3 text-sm text-cyan-400">💡 Get a pre-improvement appraisal before major work to establish your baseline value. Track all improvement costs.</p>
+      </InfoPopup>
+      
+      <InfoPopup title="VE Zone Requirements" isOpen={showInfo === 'veZone'} onClose={() => setShowInfo(null)}>
+        <p><span className="text-white font-medium">VE Zones (Coastal High Hazard)</span> have the strictest building requirements due to wave action during storms.</p>
+        <div className="mt-3 space-y-2">
+          <div className="p-3 bg-slate-700/50 rounded-lg">
+            <p className="font-medium text-white text-sm">Required in VE Zones:</p>
+            <ul className="mt-2 space-y-1 text-sm text-slate-300">
+              <li>• Open foundation (piles, piers, columns)</li>
+              <li>• Breakaway walls below BFE</li>
+              <li>• No fill for structural support</li>
+              <li>• Bottom of lowest horizontal structural member at/above BFE</li>
+              <li>• All mechanical equipment elevated</li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-slate-400">Non-compliance can void your flood insurance and result in fines.</p>
+      </InfoPopup>
+      
+      <InfoPopup title="CAFRA Permits" isOpen={showInfo === 'cafra'} onClose={() => setShowInfo(null)}>
+        <p><span className="text-white font-medium">CAFRA (Coastal Area Facility Review Act)</span> is New Jersey's law regulating development in coastal areas.</p>
+        <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+          <p className="text-sm font-medium text-white">CAFRA permits may be required for:</p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-300">
+            <li>• New construction</li>
+            <li>• Additions and expansions</li>
+            <li>• Reconstruction after damage</li>
+            <li>• Development near wetlands</li>
+            <li>• Work affecting dunes or beaches</li>
+          </ul>
+        </div>
+        <p className="mt-3 text-sm text-slate-400">Apply through NJ DEP. Processing time varies from weeks to months depending on project scope.</p>
+        <a href="https://www.nj.gov/dep/landuse/coastal.html" target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-cyan-400 text-sm hover:underline">
+          NJ DEP Coastal Permits <ExternalLink className="w-4 h-4" />
+        </a>
       </InfoPopup>
 
       {/* Item-specific info popups */}
