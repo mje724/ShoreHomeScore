@@ -396,6 +396,7 @@ export default function ShoreHomeScore() {
   const handleAddressLookup = async (addr, components) => {
     setAddressLoading(true);
     setAddressError('');
+    setShowTownFallback(false);
     
     // Extract zip and city from components OR parse from address string
     let zip = '';
@@ -446,13 +447,13 @@ export default function ShoreHomeScore() {
     if (matchedTown) {
       // Use our verified town data (always reliable)
       setTown(matchedTown);
-      setAddressLoading(false);
+      setAddressError(''); // Clear any previous error
     } else {
       // Address not in our coverage area - show fallback
-      setAddressError('This address isn\'t in our NJ shore coverage area yet. Please select the nearest town below.');
+      setAddressError('This address isn\'t in our NJ shore coverage area yet. Please select a town below.');
       setShowTownFallback(true);
-      setAddressLoading(false);
     }
+    setAddressLoading(false);
   };
 
   // Manual address submit
@@ -638,27 +639,32 @@ export default function ShoreHomeScore() {
             )}
           </form>
           
-          {/* Town Fallback Dropdown */}
-          {showTownFallback && !town && (
+          {/* Town Fallback Dropdown - shows when no match OR user wants to change */}
+          {(showTownFallback || (town && !addressLoading)) && (
             <div className="mt-4 pt-4 border-t border-slate-700">
-              <p className="text-sm text-slate-400 mb-3">Select your town:</p>
-              <div className="relative" ref={ddRef}>
-                <button onClick={() => setDd(!dd)} className="w-full p-4 bg-slate-900 border border-slate-600 rounded-xl flex items-center justify-between hover:border-cyan-500/50">
-                  <span className="text-slate-500">Choose town...</span>
-                  <ChevronDown className={`w-5 h-5 text-slate-400 ${dd ? 'rotate-180' : ''}`} />
-                </button>
-                <AnimatePresence>{dd && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-30 overflow-hidden">
-                    <div className="p-2 border-b border-slate-700"><input value={srch} onChange={e => setSrch(e.target.value)} placeholder="Search..." className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm" autoFocus /></div>
-                    <div className="max-h-64 overflow-y-auto">{filteredTowns.map(t => (
-                      <button key={t.zip} onClick={() => { setTown(t); setDd(false); setSrch(''); setAddress(`${t.name}, NJ ${t.zip}`); }} className="w-full px-4 py-3 text-left hover:bg-slate-700 flex justify-between">
-                        <div><p className="text-white font-medium">{t.name}</p><p className="text-xs text-slate-400">{t.county} • {t.zip}</p></div>
-                        <div className="text-right"><p className={`text-xs font-medium ${t.zone.startsWith('V') ? 'text-red-400' : 'text-amber-400'}`}>{t.zone}</p><p className="text-xs text-slate-500">BFE: {t.bfe}ft</p></div>
-                      </button>
-                    ))}</div>
-                  </motion.div>
-                )}</AnimatePresence>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-slate-400">{town ? 'Selected town:' : 'Select your town:'}</p>
+                {town && <button onClick={() => { setTown(null); setShowTownFallback(true); }} className="text-xs text-cyan-400 hover:text-cyan-300">Change town</button>}
               </div>
+              {!town && (
+                <div className="relative" ref={ddRef}>
+                  <button onClick={() => setDd(!dd)} className="w-full p-4 bg-slate-900 border border-slate-600 rounded-xl flex items-center justify-between hover:border-cyan-500/50">
+                    <span className="text-slate-500">Choose town...</span>
+                    <ChevronDown className={`w-5 h-5 text-slate-400 ${dd ? 'rotate-180' : ''}`} />
+                  </button>
+                  <AnimatePresence>{dd && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-30 overflow-hidden">
+                      <div className="p-2 border-b border-slate-700"><input value={srch} onChange={e => setSrch(e.target.value)} placeholder="Search..." className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm" autoFocus /></div>
+                      <div className="max-h-64 overflow-y-auto">{filteredTowns.map(t => (
+                        <button key={t.zip + t.name} onClick={() => { setTown(t); setDd(false); setSrch(''); setAddress(`${t.name}, NJ ${t.zip}`); setAddressError(''); }} className="w-full px-4 py-3 text-left hover:bg-slate-700 flex justify-between">
+                          <div><p className="text-white font-medium">{t.name}</p><p className="text-xs text-slate-400">{t.county} • {t.zip}</p></div>
+                          <div className="text-right"><p className={`text-xs font-medium ${t.zone.startsWith('V') ? 'text-red-400' : 'text-amber-400'}`}>{t.zone}</p><p className="text-xs text-slate-500">BFE: {t.bfe}ft</p></div>
+                        </button>
+                      ))}</div>
+                    </motion.div>
+                  )}</AnimatePresence>
+                </div>
+              )}
             </div>
           )}
           
